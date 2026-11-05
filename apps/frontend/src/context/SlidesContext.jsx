@@ -78,7 +78,8 @@ export const SlidesProvider = ({ children }) => {
                 path: storageRef.fullPath,
                 url,
                 duration: 1,
-                transition: 'fade'
+                transition: 'fade',
+                caption: ''
             };
 
             setSlides((prev) => [slide, ...prev]);

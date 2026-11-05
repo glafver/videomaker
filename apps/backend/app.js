@@ -49,6 +49,9 @@ const RESOLUTIONS = {
     '9:16': { width: 576, height: 1024 }
 };
 
+// Font used for captions (drawtext). Bundled so it works inside the Docker image.
+const CAPTION_FONT = path.join(__dirname, 'assets', 'caption-font.ttf');
+
 // Only image URLs from Firebase Storage are allowed (SSRF protection).
 const ALLOWED_IMAGE_HOSTS = ['firebasestorage.googleapis.com', 'storage.googleapis.com'];
 
@@ -189,22 +192,41 @@ const createVideo = (id, instructions, paths) => {
         }
 
         const filters = [];
+        const slideStreams = [];
+        const captionFontSize = Math.round(height * 0.06);
 
-        if (kenBurns) {
-            for (let i = 0; i < amountOfSlides; i++) {
+        for (let i = 0; i < amountOfSlides; i++) {
+            const caption = instructions.slideshow[i].caption || '';
+            let current = `[${i}:v]`;
+            let hasFilter = false;
+
+            if (kenBurns) {
                 const frames = Math.round(paddedDurations[i] * FPS);
                 filters.push(
-                    `[${i}:v]zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${FPS}[v${i}]`
+                    `${current}zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${FPS}[v${i}]`
                 );
+                current = `[v${i}]`;
+                hasFilter = true;
             }
+
+            if (caption) {
+                const captionFile = path.join(__dirname, id, `caption-${i}.txt`);
+                fs.writeFileSync(captionFile, caption, 'utf8');
+                filters.push(
+                    `${current}drawtext=fontfile=${CAPTION_FONT}:textfile=${captionFile}:fontcolor=white:fontsize=${captionFontSize}:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.35:boxborderw=16[c${i}]`
+                );
+                current = `[c${i}]`;
+                hasFilter = true;
+            }
+
+            slideStreams[i] = hasFilter ? current : `[${i}:v]`;
         }
 
         if (amountOfSlides > 1) {
             for (let k = 0; k < amountOfSlides - 1; k++) {
-                const firstIn = k === 0 ? (kenBurns ? '[v0]' : '[0]') : `[out${k}]`;
-                const secondIn = kenBurns ? `[v${k + 1}]` : `[${k + 1}]`;
+                const firstIn = k === 0 ? slideStreams[0] : `[out${k}]`;
                 filters.push(
-                    `${firstIn}${secondIn}xfade=transition=${instructions.slideshow[k].transition}:duration=1:offset=${offsets[k]}[out${k + 1}]`
+                    `${firstIn}${slideStreams[k + 1]}xfade=transition=${instructions.slideshow[k].transition}:duration=1:offset=${offsets[k]}[out${k + 1}]`
                 );
             }
         }
@@ -214,9 +236,9 @@ const createVideo = (id, instructions, paths) => {
         if (amountOfSlides > 1) {
             commandArgs.push('-filter_complex', filterComplex);
             commandArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', FPS, '-map', `[out${amountOfSlides - 1}]`);
-        } else if (kenBurns) {
+        } else if (slideStreams[0] !== '[0:v]') {
             commandArgs.push('-filter_complex', filterComplex);
-            commandArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', FPS, '-map', '[v0]');
+            commandArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', FPS, '-map', slideStreams[0]);
         } else {
             commandArgs.push('-filter_complex', `concat=n=${amountOfSlides}:v=1:a=0`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p');
         }
@@ -302,7 +324,8 @@ app.post('/video', async (req, res) => {
     const normalizedSlideshow = slideshow.map((slide) => ({
         url: slide.url,
         duration: Math.min(5, Math.max(1, parseInt(slide.duration, 10) || 1)),
-        transition: slide.transition || 'fade'
+        transition: slide.transition || 'fade',
+        caption: typeof slide.caption === 'string' ? slide.caption.trim().slice(0, 120) : ''
     }));
 
     const aspectRatio = ['16:9', '1:1', '9:16'].includes(req.body.aspectRatio) ? req.body.aspectRatio : '16:9';

@@ -21,7 +21,8 @@ const useCreateVideo = () => {
                 return {
                     url: slide.url,
                     duration: (~~slide.duration),
-                    transition: slide.transition
+                    transition: slide.transition,
+                    caption: slide.caption || ''
                 };
             }),
             userID: localStorage.getItem('userID'),
