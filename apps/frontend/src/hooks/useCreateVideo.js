@@ -5,9 +5,11 @@ const useCreateVideo = () => {
 
     const [videoStatus, setVideoStatus] = useState(null);
     const [orderId, setOrderId] = useState(null);
+    const [progress, setProgress] = useState(0);
 
     const create = async () => {
         setVideoStatus('PREPARING');
+        setProgress(0);
 
         const slidesLocal = JSON.parse(localStorage.getItem('slides') || '[]');
         const soundtrack = localStorage.getItem('soundtrack') || 'none';
@@ -49,13 +51,18 @@ const useCreateVideo = () => {
             axios.get(`${import.meta.env.VITE_SERVER_BASE_URL}/status/${orderId}`)
                 .then((response) => {
                     if (cancelled) return;
-                    if (response.data.status === 'READY') {
-                        localStorage.setItem('videoURL', response.data.url);
+
+                    const { status, progress: nextProgress, url } = response.data;
+
+                    if (status === 'READY') {
+                        localStorage.setItem('videoURL', url);
                         setVideoStatus('READY');
                         clearInterval(checkStatusInterval);
-                    } else if (response.data.status === 'FAILED' || response.data.status === 'UNKNOWN') {
+                    } else if (status === 'FAILED' || status === 'UNKNOWN') {
                         setVideoStatus('FAILED');
                         clearInterval(checkStatusInterval);
+                    } else if (typeof nextProgress === 'number') {
+                        setProgress(nextProgress);
                     }
                 })
                 .catch((error) => {
@@ -76,7 +83,8 @@ const useCreateVideo = () => {
         create,
         videoStatus,
         setVideoStatus,
-        orderId
+        orderId,
+        progress
     };
 };
 

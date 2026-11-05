@@ -57,7 +57,7 @@ const EditVideoPage = () => {
                     <button className='button-18 mt-5' onClick={() => { createVideo.create(); }}>Create video! </button>
                 </div>
 
-                <StatusModal videoStatus={createVideo.videoStatus} orderId={createVideo.orderId} setVideoStatus={createVideo.setVideoStatus} />
+                <StatusModal videoStatus={createVideo.videoStatus} orderId={createVideo.orderId} setVideoStatus={createVideo.setVideoStatus} progress={createVideo.progress} />
             </div>
         </Container>
     );

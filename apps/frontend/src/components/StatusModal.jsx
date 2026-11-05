@@ -3,7 +3,7 @@ import { ClockLoader } from 'react-spinners';
 import { Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 
-const StatusModal = ({ videoStatus, setVideoStatus }) => {
+const StatusModal = ({ videoStatus, setVideoStatus, progress = 0 }) => {
 
     const navigate = useNavigate();
 
@@ -13,13 +13,27 @@ const StatusModal = ({ videoStatus, setVideoStatus }) => {
         }
     }, [videoStatus]);
 
-
     return (
         <Modal show={videoStatus} dialogClassName='waiting-loading modal-dialog modal-dialog-centered'>
             {videoStatus === 'PREPARING' &&
                 <>
                     <ClockLoader speedMultiplier={0.5} size={250} color={'#92a49f'} />
                     <p className='mt-5 text-center'>Please wait, we prepare your video. It may take some time. Do not close the window.</p>
+                    {progress > 0 && (
+                        <div style={{ width: '100%', maxWidth: '360px', marginTop: '16px' }}>
+                            <div style={{ height: '8px', background: '#dee3e2', borderRadius: '100px', overflow: 'hidden' }}>
+                                <div
+                                    style={{
+                                        height: '100%',
+                                        width: `${progress}%`,
+                                        background: '#92a49f',
+                                        transition: 'width 0.3s ease'
+                                    }}
+                                />
+                            </div>
+                            <p className='mt-2 mb-0 text-center'>{progress}%</p>
+                        </div>
+                    )}
                 </>
             }
             {videoStatus === 'FAILED' &&
