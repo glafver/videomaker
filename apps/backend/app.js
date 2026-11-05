@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
-const { spawn, execSync } = require('child_process');
+const { spawn, execSync, execFileSync } = require('child_process');
 const cors = require('cors');
 const fs = require('fs');
 const axios = require('axios');
@@ -122,9 +122,14 @@ const downloadImage = async (url, filepath) => {
 const alignPictures = (id, paths, { width, height }) => {
     for (let i = 0; i < paths.length; i++) {
         const output = path.join(__dirname, id, `ready-${i}.jpg`);
-        execSync(
-            `${IMAGEMAGICK_BIN} -auto-orient "${paths[i]}" -resize ${width}x${height} -gravity center -background "${LETTERBOX_COLOR}" -extent ${width}x${height} "${output}"`
-        );
+        execFileSync(IMAGEMAGICK_BIN, [
+            '-auto-orient', paths[i],
+            '-resize', `${width}x${height}`,
+            '-gravity', 'center',
+            '-background', LETTERBOX_COLOR,
+            '-extent', `${width}x${height}`,
+            output
+        ]);
         paths[i] = output;
     }
 };
