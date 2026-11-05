@@ -52,6 +52,18 @@ const RESOLUTIONS = {
 // Font used for captions (drawtext). Bundled so it works inside the Docker image.
 const CAPTION_FONT = path.join(__dirname, 'assets', 'caption-font.ttf');
 
+// ImageMagick binary: prefer v7 (`magick`) and fall back to v6 (`convert`).
+// Override with IMAGEMAGICK_BIN if needed.
+const IMAGEMAGICK_BIN = (() => {
+    if (process.env.IMAGEMAGICK_BIN) return process.env.IMAGEMAGICK_BIN;
+    try {
+        execSync('magick -version', { stdio: 'ignore' });
+        return 'magick';
+    } catch (e) {
+        return 'convert';
+    }
+})();
+
 // Only image URLs from Firebase Storage are allowed (SSRF protection).
 const ALLOWED_IMAGE_HOSTS = ['firebasestorage.googleapis.com', 'storage.googleapis.com'];
 
@@ -111,7 +123,7 @@ const alignPictures = (id, paths, { width, height }) => {
     for (let i = 0; i < paths.length; i++) {
         const output = path.join(__dirname, id, `ready-${i}.jpg`);
         execSync(
-            `convert -auto-orient "${paths[i]}" -resize ${width}x${height} -gravity center -background "${LETTERBOX_COLOR}" -extent ${width}x${height} "${output}"`
+            `${IMAGEMAGICK_BIN} -auto-orient "${paths[i]}" -resize ${width}x${height} -gravity center -background "${LETTERBOX_COLOR}" -extent ${width}x${height} "${output}"`
         );
         paths[i] = output;
     }

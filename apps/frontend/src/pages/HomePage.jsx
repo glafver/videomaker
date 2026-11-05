@@ -11,7 +11,7 @@ const HomePage = () => {
 
     useEffect(() => {
         // Wake up the server (it may go to sleep if unused for a while).
-        axios.get(`${import.meta.env.VITE_SERVER_BASE_URL}/status/wake_up`);
+        axios.get(`${import.meta.env.VITE_SERVER_BASE_URL}/status/wake_up`).catch(() => {});
         // Returning to the home page starts a fresh session.
         localStorage.removeItem('videoURL');
         localStorage.removeItem('orderID');
