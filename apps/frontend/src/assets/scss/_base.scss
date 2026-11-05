@@ -1,0 +1,162 @@
+.App {
+    min-height: 100vh;
+    position: relative;
+    font-family: 'Gilroy-Light', sans-serif;
+    font-size: 17px;
+}
+
+.App {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.footer {
+    margin-top: auto;
+    width: 100%;
+    color: white;
+    background-color: $vm-text;
+    height: fit-content;
+
+    a {
+        color: $vm-primary;
+        text-decoration: none;
+        margin-left: 10px;
+
+        &:hover {
+            color: $vm-secondary;
+        }
+
+        a:visited {
+            color: $vm-primary;
+        }
+    }
+}
+
+.page {
+    padding-bottom: 50px;
+}
+
+hr {
+    color: #8b9197;
+    opacity: 1;
+}
+
+.button-18 {
+    align-items: center;
+    background-color: $vm-primary;
+    border: 0;
+    border-radius: 100px;
+    box-sizing: border-box;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 16px;
+    font-weight: 600;
+    justify-content: center;
+    line-height: 20px;
+    min-height: 40px;
+    padding: 0px;
+    padding-left: 20px;
+    padding-right: 20px;
+    text-align: center;
+    user-select: none;
+}
+
+.button-18:hover,
+.button-18:focus {
+    filter: brightness(.9);
+    transition: 0.3s ease;
+}
+
+.button-18:active {
+    background: #09223b;
+    color: rgb(255, 255, 255, .7);
+}
+
+.button-18:disabled {
+    cursor: not-allowed;
+    background: rgba(0, 0, 0, .08);
+    color: rgba(0, 0, 0, .3);
+}
+
+.button-19 {
+    align-items: center;
+    background-color: transparent;
+    border: 2px solid $vm-primary;
+    border-radius: 100px;
+    box-sizing: border-box;
+    color: $vm-primary;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 16px;
+    font-weight: 600;
+    justify-content: center;
+    line-height: 20px;
+    min-height: 40px;
+    padding: 0px;
+    padding-left: 20px;
+    padding-right: 20px;
+    text-align: center;
+    user-select: none;
+}
+
+.button-19:hover,
+.button-19:focus {
+    filter: brightness(1.1);
+    transition: 0.3s ease;
+    background-color: $vm-primary;
+    color: #ffffff;
+}
+
+.button-19:active {
+    background: $vm-primary;
+    color: rgb(9, 34, 59, .7);
+}
+
+.button-19:disabled {
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, .08);
+    color: rgba(255, 255, 255, .3);
+}
+
+.delete-button {
+    position: absolute;
+    padding: 0px;
+    top: -15px;
+    right: -15px;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    background-color: $vm-red;
+    color: white;
+    border: none;
+
+    @media screen and (max-width: 900px) {
+        top: -9px;
+        right: -9px;
+    }
+
+    svg {
+        vertical-align: 0;
+        font-size: 40px
+    }
+}
+
+.delete-button:active {
+    background-color: $vm-red !important;
+}
+
+.delete-button:hover,
+.delete-button:focus {
+    background-color: $vm-red;
+    color: white;
+    border: none;
+    filter: brightness(.9);
+}
+
+.delete-button.btn:focus-visible {
+    background-color: $vm-red;
+    border: none !important;
+    outline: 0;
+}
