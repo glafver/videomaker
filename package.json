@@ -1,0 +1,16 @@
+{
+  "name": "videomaker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Videomaker — create a video slideshow from uploaded photos (monorepo: React frontend + Express/ffmpeg backend)",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace @videomaker/frontend",
+    "dev:backend": "npm run dev --workspace @videomaker/backend",
+    "build:frontend": "npm run build --workspace @videomaker/frontend",
+    "start:backend": "npm run start --workspace @videomaker/backend",
+    "dev": "npm run dev:frontend"
+  }
+}
