@@ -1,13 +1,14 @@
 const express = require('express');
 const crypto = require('crypto');
+const path = require('path');
 const { spawn, execSync } = require('child_process');
 const cors = require('cors');
 const fs = require('fs');
 const axios = require('axios');
-require('dotenv').config()
+require('dotenv').config();
 
-const { initializeApp } = require("firebase/app");
-const { getStorage, ref, uploadBytes, getDownloadURL } = require("firebase/storage");
+const { initializeApp } = require('firebase/app');
+const { getStorage, ref, uploadBytes, getDownloadURL } = require('firebase/storage');
 
 const firebaseConfig = {
     apiKey: process.env.FIREBASE_API_KEY,
@@ -21,199 +22,279 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const storage = getStorage(firebaseApp);
 
-const port = process.env.PORT
+const port = process.env.PORT || 3001;
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(cors());
-
-const corsOptions = {
-    origin: process.env.CORS_ORIGIN,
+app.use(cors({
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
     optionsSuccessStatus: 200
-}
+}));
 
-const videoStatuses = []
-const videoUrls = []
+// In-memory job state (see /status/:id). Each entry: { status, progress?, url? }.
+// TODO (cloud persistence): mirror this to Firestore so status survives instance restarts.
+const jobs = {};
 
-// Generates random hex sequense with specified length
+// Letterbox fill color used when an image's aspect ratio differs from the target.
+const LETTERBOX_COLOR = '#374048';
+
+// Only image URLs from Firebase Storage are allowed (SSRF protection).
+const ALLOWED_IMAGE_HOSTS = ['firebasestorage.googleapis.com', 'storage.googleapis.com'];
+
+// Generates a random hex sequence of the exact specified length.
 const randomValue = (length) => {
-    const value = crypto.randomBytes(length).toString('hex')
-    return value
-}
+    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
+};
 
-// Download images with specified urls into folder named with id.
+const isAllowedImageUrl = (url) => {
+    try {
+        const host = new URL(url).hostname;
+        return ALLOWED_IMAGE_HOSTS.some((allowed) => host === allowed || host.endsWith('.' + allowed));
+    } catch (e) {
+        return false;
+    }
+};
+
+// Download images with specified urls into a folder named with id.
 // Returns local paths for images that will be used by ffmpeg.
 const downloadImages = async (id, urls) => {
-    let dir = `${__dirname}/${id}`;
+    const dir = path.join(__dirname, id);
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir);
     }
 
-    let i = 0
-    const paths = []
-    for (const url of urls) {
-        const path = `${dir}/${++i}.jpg`
-        await downloadImage(url, path)
-        paths.push(path)
+    const paths = [];
+    for (let i = 0; i < urls.length; i++) {
+        const filepath = path.join(dir, `${i + 1}.jpg`);
+        await downloadImage(urls[i], filepath);
+        paths.push(filepath);
     }
 
-    return paths
-}
+    return paths;
+};
 
 const downloadImage = async (url, filepath) => {
+    if (!isAllowedImageUrl(url)) {
+        throw new Error(`Image URL is not allowed: ${url}`);
+    }
+
     const response = await axios({
         url,
         method: 'GET',
         responseType: 'stream'
     });
+
     return new Promise((resolve, reject) => {
         response.data.pipe(fs.createWriteStream(filepath))
             .on('error', reject)
-            .once('close', () => {
-                resolve(filepath)
-            });
+            .once('close', () => resolve(filepath));
     });
-}
+};
 
-// Scales and aligns images specified by path to full-hd resolution using Imagemagick.
-// If picture's aspect ratio differs from full hd resolution method fixes it filling with specified color.
-const alignPictures = async (id, paths) => {
-    const result = execSync(`convert -auto-orient ${__dirname}/${id}/*.jpg -resize 1024x576 -gravity center -background "#222529" -extent 1024x576 ${__dirname}/${id}/ready${paths.length > 1 ? '' : '-0'}.jpg`)
+// Scales and aligns images to the target resolution using ImageMagick.
+// If a picture's aspect ratio differs, it is centered and padded with the fill color.
+const alignPictures = (id, paths, { width = 1024, height = 576 } = {}) => {
     for (let i = 0; i < paths.length; i++) {
-        paths[i] = `${__dirname}/${id}/ready-${i}.jpg`
+        const output = path.join(__dirname, id, `ready-${i}.jpg`);
+        execSync(
+            `convert -auto-orient "${paths[i]}" -resize ${width}x${height} -gravity center -background "${LETTERBOX_COLOR}" -extent ${width}x${height} "${output}"`
+        );
+        paths[i] = output;
     }
-}
+};
 
-const deleteFile = (id) => {
-    let dir = `${__dirname}/${id}`
-    fs.rmSync(dir, { recursive: true, force: true });
-}
+const removeDir = (id) => {
+    fs.rmSync(path.join(__dirname, id), { recursive: true, force: true });
+};
 
-// Uploads generated video to firebase and deletes local file afterwards
+const removeFile = (filepath) => {
+    fs.rmSync(filepath, { force: true });
+};
+
+// Uploads the generated video to Firebase and deletes the local file afterwards.
 const uploadVideo = async (id, userID) => {
-    const fileName = id + '.mp4'
+    const filePath = path.join(__dirname, `${id}.mp4`);
     try {
-        const storageRef = ref(storage, `/${userID}/${fileName}`);
-        const fileData = fs.readFileSync(fileName);
-        await uploadBytes(storageRef, fileData)
-        const url = await getDownloadURL(storageRef)
-        videoUrls[`${id}`] = url
-        deleteFile(fileName)
+        const storageRef = ref(storage, `/${userID}/${id}.mp4`);
+        const fileData = fs.readFileSync(filePath);
+        await uploadBytes(storageRef, fileData);
+        const url = await getDownloadURL(storageRef);
+        jobs[id].url = url;
     } catch (error) {
-        console.log(error)
+        console.error('Failed to upload video:', error);
+        throw error;
+    } finally {
+        removeFile(filePath);
     }
-}
+};
 
-// Builds up ffmpeg command and executes it to make a video specified by instructions
+// Builds the ffmpeg command and executes it to make a video specified by instructions.
 const createVideo = (id, instructions, paths) => {
+    jobs[id] = { status: 'IN_PROGRESS', progress: 0 };
 
-    videoStatuses[`${id}`] = 'IN_PROGRESS'
+    const amountOfSlides = instructions.slideshow.length;
 
-    const commandArgs = ['-y']
+    // Expected output length in seconds: sum of slide durations + 1s per transition.
+    // (Each transition overlaps 1 second, and the first/last slides carry 1s of padding.)
+    const totalDuration = instructions.slideshow.reduce((sum, slide) => sum + slide.duration, 0) + (amountOfSlides - 1);
+    const totalMicros = totalDuration * 1e6;
+
+    const commandArgs = ['-y'];
 
     try {
+        const durationAddition = amountOfSlides > 1 ? 2 : 0;
 
-        let amountOfSlides = instructions.slideshow.length;
-        let durationAddition = amountOfSlides > 1 ? 2 : 0;
-
-        let transition = ''
+        let transition = '';
 
         let i = 0;
-        let accumulatedOffset = 0
+        let accumulatedOffset = 0;
         const urls = instructions.slideshow.map(function (slide) {
-            const isFirstOrLast = (i === 0 || i + 1 === instructions.slideshow.length)
-            const isLast = (i + 1 === instructions.slideshow.length)
-            const isPreLast = (i + 2 === instructions.slideshow.length)
-            commandArgs.push('-loop', '1', '-t', slide.duration + (amountOfSlides > 1 ? (isFirstOrLast ? 1 : durationAddition) : 0), '-i', paths[i])
+            const isFirstOrLast = (i === 0 || i + 1 === amountOfSlides);
+            const isLast = (i + 1 === amountOfSlides);
+            const isPreLast = (i + 2 === amountOfSlides);
+            commandArgs.push('-loop', '1', '-t', slide.duration + (amountOfSlides > 1 ? (isFirstOrLast ? 1 : durationAddition) : 0), '-i', paths[i]);
 
             if (amountOfSlides > 1) {
-                accumulatedOffset += slide.duration
+                accumulatedOffset += slide.duration;
                 if (!isLast) {
-                    transition += `[${i === 0 ? 0 : 'out' + i}][${i + 1}]xfade=transition=${slide.transition}:duration=1:offset=${accumulatedOffset}[out${++i}]${!isPreLast ? ';' : ''}`
+                    transition += `[${i === 0 ? 0 : 'out' + i}][${i + 1}]xfade=transition=${slide.transition}:duration=1:offset=${accumulatedOffset}[out${++i}]${!isPreLast ? ';' : ''}`;
                 }
-                ++accumulatedOffset // increment 1 for 1 second of transition
+                ++accumulatedOffset; // increment 1 for 1 second of transition
             }
-        })
+        });
 
         if (instructions.soundtrack) {
-            commandArgs.push('-i', instructions.soundtrack)
+            commandArgs.push('-i', instructions.soundtrack);
         }
 
         if (amountOfSlides > 1) {
-            commandArgs.push('-filter_complex', transition)
-            commandArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '25', '-map', `[out${i}]`)
+            commandArgs.push('-filter_complex', transition);
+            commandArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '25', '-map', `[out${i}]`);
         } else {
-            commandArgs.push('-filter_complex', `concat=n=${urls.length}:v=1:a=0`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p')
+            commandArgs.push('-filter_complex', `concat=n=${urls.length}:v=1:a=0`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p');
         }
 
         if (instructions.soundtrack) {
-            commandArgs.push('-shortest', '-map', `${urls.length}:a:0`)
+            commandArgs.push('-shortest', '-map', `${urls.length}:a:0`);
         }
 
-        commandArgs.push(`${id}.mp4`)
+        // Report encoding progress to stdout so the frontend can show a progress bar.
+        commandArgs.push('-progress', 'pipe:1', '-nostats');
+        commandArgs.push(path.join(__dirname, `${id}.mp4`));
 
-        console.log('ffmpeg', commandArgs.join(" "))
+        console.log('ffmpeg', commandArgs.join(' '));
 
-        const ffmpeg = spawn('ffmpeg', commandArgs)
+        const ffmpeg = spawn('ffmpeg', commandArgs);
 
         ffmpeg.stdout.on('data', (data) => {
-            console.log(`stdout: ${data}`);
+            const text = data.toString();
+            for (const rawLine of text.split(/\r?\n/)) {
+                const line = rawLine.trim();
+                if (!line) continue;
+                const idx = line.indexOf('=');
+                if (idx === -1) continue;
+                const key = line.slice(0, idx).trim();
+                const value = line.slice(idx + 1).trim();
+                if (key === 'out_time_us' || key === 'out_time_ms') {
+                    const micros = Number(value);
+                    if (!Number.isNaN(micros) && totalMicros > 0) {
+                        jobs[id].progress = Math.min(100, Math.round((micros / totalMicros) * 100));
+                    }
+                }
+            }
         });
 
         ffmpeg.stderr.on('data', (data) => {
-            // console.error(`stderr: ${data}`);
+            // ffmpeg logs to stderr; keep it quiet but available for debugging.
         });
 
         ffmpeg.on('close', async (code) => {
             console.log(`child process exited with code ${code}`);
-            if (code === 0) {
-                await uploadVideo(id, instructions.userID)
-                videoStatuses[`${id}`] = 'READY'
-            } else {
-                videoStatuses[`${id}`] = 'FAILED'
+            try {
+                if (code === 0) {
+                    await uploadVideo(id, instructions.userID);
+                    jobs[id].status = 'READY';
+                    jobs[id].progress = 100;
+                } else {
+                    jobs[id].status = 'FAILED';
+                }
+            } catch (e) {
+                console.error('Error finalizing video:', e);
+                jobs[id].status = 'FAILED';
+            } finally {
+                removeFile(path.join(__dirname, `${id}.mp4`));
+                removeDir(id);
             }
-            deleteFile(id)
         });
-
-
     } catch (e) {
-        console.error('ERROR!!!', e)
-        videoStatuses[`${id}`] = 'FAILED'
-        return
+        console.error('ERROR!!!', e);
+        jobs[id] = { status: 'FAILED' };
+        removeDir(id);
+    }
+};
+
+// The endpoint receives the settings from the frontend, responds with the order ID
+// and starts the video creation process.
+app.post('/video', async (req, res) => {
+    const { slideshow, soundtrack, userID, orderId } = req.body || {};
+
+    if (!Array.isArray(slideshow) || slideshow.length === 0 || slideshow.length > 6) {
+        return res.status(400).json({ error: 'slideshow must be a non-empty array with at most 6 slides' });
+    }
+    if (!userID) {
+        return res.status(400).json({ error: 'userID is required' });
+    }
+    for (const slide of slideshow) {
+        if (!slide || typeof slide.url !== 'string' || !slide.url) {
+            return res.status(400).json({ error: 'each slide must have a url' });
+        }
     }
 
-}
+    const id = orderId || randomValue(32);
 
-// The endpoint receives the settings from the frontend, responces with the order ID and starts the video creation processes.
-app.post('/video', cors(corsOptions), async (req, res) => {
-    // console.log('post video', req.body)
+    const normalizedSlideshow = slideshow.map((slide) => ({
+        url: slide.url,
+        duration: Math.min(5, Math.max(1, parseInt(slide.duration, 10) || 1)),
+        transition: slide.transition || 'fade'
+    }));
 
-    const id = req.body.orderId ? req.body.orderId : randomValue(32)
+    const instructions = {
+        slideshow: normalizedSlideshow,
+        userID,
+        soundtrack: typeof soundtrack === 'string' ? soundtrack : ''
+    };
 
-    const urls = req.body.slideshow.map(slide => {
-        return slide.url
-    })
+    try {
+        const urls = normalizedSlideshow.map((slide) => slide.url);
+        const paths = await downloadImages(id, urls);
+        alignPictures(id, paths);
+        createVideo(id, instructions, paths);
 
-    const paths = await downloadImages(id, urls)
-    alignPictures(id, paths)
-    createVideo(id, req.body, paths)
+        res.status(201).json({ id });
+    } catch (e) {
+        console.error('Error creating video:', e);
+        removeDir(id);
+        res.status(500).json({ error: 'Failed to create video' });
+    }
+});
 
-    res.status(201);
-    res.json({ id })
-})
-
-// The endpoint returns video statuses (requested periodically from the frontend). In the case of a READY status, it also returns a link to the uploaded video.
+// The endpoint returns video status (requested periodically from the frontend).
+// In the case of a READY status, it also returns a link to the uploaded video.
 app.get('/status/:id', (req, res) => {
-    const result = {}
-    result.status = videoStatuses[`${req.params.id}`] === undefined ? 'UNKNOWN' : videoStatuses[`${req.params.id}`];
-    if (result.status === 'READY') {
-        result.url = videoUrls[`${req.params.id}`]
+    const job = jobs[req.params.id];
+    const result = {
+        status: job ? job.status : 'UNKNOWN'
+    };
+    if (job && typeof job.progress === 'number') {
+        result.progress = job.progress;
     }
-    res.status(200)
-    res.json(result)
-})
+    if (result.status === 'READY' && job.url) {
+        result.url = job.url;
+    }
+    res.status(200).json(result);
+});
 
 app.listen(port, () => {
-    console.log(`Videomaker app listening on port ${port}`)
-})
+    console.log(`Videomaker app listening on port ${port}`);
+});
