@@ -15,12 +15,12 @@ const steps = [
 
 const HowTo = () => {
     const [activeStep, setActiveStep] = useState(0);
-    const stepRefs = steps.map(() => useRef(null));
+    const stepRefs = useRef([]);
 
     const handleScroll = () => {
         const scrollPosition = window.scrollY + window.innerHeight / 2;
-        const stepPositions = stepRefs.map(ref => ref.current.offsetTop);
-        const newActiveStep = stepPositions.findIndex((pos, i) => stepPositions[i + 1] > scrollPosition);
+        const stepPositions = stepRefs.current.map((ref) => (ref ? ref.getBoundingClientRect().top + window.scrollY : 0));
+        const newActiveStep = stepPositions.findIndex((pos, i) => (stepPositions[i + 1] ?? Infinity) > scrollPosition);
         setActiveStep(newActiveStep >= 0 ? newActiveStep : steps.length);
     };
 
@@ -45,14 +45,18 @@ const HowTo = () => {
                             How to use Videomaker?
                         </div>
                         {steps.map((step, index) => (
-                            <Row className={`${activeStep === index ? 'active' : ''} flex-column flex-md-row`} ref={stepRefs[index]} key={index}>
+                            <Row
+                                className={`${activeStep === index ? 'active' : ''} flex-column flex-md-row`}
+                                ref={(el) => { stepRefs.current[index] = el; }}
+                                key={index}
+                            >
                                 <Col xs={12} md={3} className='vm-center border-right'>
                                     <div className='icon-wrapper my-4'>
                                         {step.icon}
                                     </div>
                                 </Col>
                                 <Col xs={12} md={9} className='text-center text-md-start my-md-4'>
-                                    <div className='d-flex flex-column '>
+                                    <div className='d-flex flex-column'>
                                         <div className='fw-bold'>Step {index + 1}: {step.heading}</div>
                                         <div>{step.text}</div>
                                     </div>
@@ -62,8 +66,8 @@ const HowTo = () => {
                     </Col>
                 </Row>
             </Fade>
-        </div >
+        </div>
     );
 };
 
-export default HowTo;;
+export default HowTo;

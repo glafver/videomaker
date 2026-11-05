@@ -4,6 +4,6 @@ to = "/"
 status = 200
 
 [[headers]]
-for = "/src/assets/scss/fonts/gilroy/*.woff2"
+for = "/fonts/gilroy/*.woff2"
 [headers.values]
 Content-Type = "font/woff2"
