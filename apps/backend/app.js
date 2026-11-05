@@ -123,7 +123,8 @@ const alignPictures = (id, paths, { width, height }) => {
     for (let i = 0; i < paths.length; i++) {
         const output = path.join(__dirname, id, `ready-${i}.jpg`);
         execFileSync(IMAGEMAGICK_BIN, [
-            '-auto-orient', paths[i],
+            paths[i],
+            '-auto-orient',
             '-resize', `${width}x${height}`,
             '-gravity', 'center',
             '-background', LETTERBOX_COLOR,
