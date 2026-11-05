@@ -368,3 +368,84 @@
         border-color: $vm-primary;
     }
 }
+
+// Live preview ----------------------------------------------
+.preview-modal {
+    .modal-content {
+        background-color: #000;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .preview-viewport {
+        position: relative;
+        background-color: #000;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        max-width: 100%;
+
+        .preview-slide {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .preview-caption {
+            position: absolute;
+            left: 50%;
+            bottom: 16px;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 16px;
+            white-space: nowrap;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    .preview-controls {
+        color: white;
+
+        .text-muted {
+            color: #a6a6a6 !important;
+        }
+    }
+}
+
+@keyframes vm-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes vm-slide-in-right {
+    from { opacity: 0; transform: translateX(40px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes vm-slide-in-left {
+    from { opacity: 0; transform: translateX(-40px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes vm-slide-in-up {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes vm-slide-in-down {
+    from { opacity: 0; transform: translateY(-40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.preview-fade { animation: vm-fade-in 1s ease forwards; }
+.preview-slide-right { animation: vm-slide-in-right 1s ease forwards; }
+.preview-slide-left { animation: vm-slide-in-left 1s ease forwards; }
+.preview-slide-up { animation: vm-slide-in-up 1s ease forwards; }
+.preview-slide-down { animation: vm-slide-in-down 1s ease forwards; }

@@ -5,14 +5,16 @@ import SlideSettings from '../components/SlideSettings';
 import VideoSettings from '../components/VideoSettings';
 import { useNavigate } from 'react-router-dom';
 import StatusModal from '../components/StatusModal';
+import PreviewModal from '../components/PreviewModal';
 import useCreateVideo from '../hooks/useCreateVideo';
 import { useSlides } from '../context/SlidesContext';
 
 const EditVideoPage = () => {
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+    const [showPreview, setShowPreview] = useState(false);
     const navigate = useNavigate();
 
-    const { slides } = useSlides();
+    const { slides, settings } = useSlides();
     const createVideo = useCreateVideo();
 
     useEffect(() => {
@@ -56,9 +58,11 @@ const EditVideoPage = () => {
                 />
 
                 <div className='w-100 text-center'>
-                    <button className='button-18 mt-5' onClick={() => { createVideo.create(); }}>Create video! </button>
+                    <button className='button-19 mt-5' onClick={() => { setShowPreview(true); }}>Preview</button>
+                    <button className='button-18 mt-5 ms-3' onClick={() => { createVideo.create(); }}>Create video! </button>
                 </div>
 
+                <PreviewModal show={showPreview} onClose={() => { setShowPreview(false); }} slides={slides} settings={settings} />
                 <StatusModal videoStatus={createVideo.videoStatus} orderId={createVideo.orderId} setVideoStatus={createVideo.setVideoStatus} progress={createVideo.progress} />
             </div>
         </Container>
