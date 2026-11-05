@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
+import { SlidesProvider } from './context/SlidesContext';
 import App from './App';
 
 const queryClient = new QueryClient({
@@ -16,8 +17,10 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <SlidesProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </SlidesProvider>
   </QueryClientProvider>
 );

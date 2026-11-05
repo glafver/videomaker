@@ -1,31 +1,34 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container } from 'react-bootstrap';
 import Slides from '../components/Slides';
 import SlideSettings from '../components/SlideSettings';
 import { useNavigate } from 'react-router-dom';
 import StatusModal from '../components/StatusModal';
 import useCreateVideo from '../hooks/useCreateVideo';
+import { useSlides } from '../context/SlidesContext';
 
 const EditVideoPage = () => {
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-    const [slides, setSlides] = useState();
-
     const navigate = useNavigate();
 
+    const { slides } = useSlides();
     const createVideo = useCreateVideo();
 
     useEffect(() => {
-        window.addEventListener('storage', () => {
-            let slidesLocal = localStorage.getItem('slides') ? JSON.parse(localStorage.getItem('slides')) : [];
-            setSlides(slidesLocal);
-            if (slidesLocal.length === 0) {
-                navigate('/');
-                return;
-            }
-        });
-        window.dispatchEvent(new Event('storage'));
-    }, []);
+        if (!slides.length) {
+            navigate('/');
+        }
+    }, [slides, navigate]);
+
+    useEffect(() => {
+        if (slides.length && currentSlideIndex >= slides.length) {
+            setCurrentSlideIndex(slides.length - 1);
+        }
+    }, [slides, currentSlideIndex]);
+
+    if (!slides.length) {
+        return null;
+    }
 
     return (
         <Container className='page'>
@@ -41,15 +44,13 @@ const EditVideoPage = () => {
                         }
                     </div>
                     <div className='edit-right' >
-                        <SlideSettings slides={slides} currentSlideIndex={currentSlideIndex}
-                        />
+                        <SlideSettings slides={slides} currentSlideIndex={currentSlideIndex} />
                     </div>
                 </div>
                 <Slides
                     setCurrentSlideIndex={setCurrentSlideIndex}
                     currentSlideIndex={currentSlideIndex}
                     slides={slides}
-                    setSlides={setSlides}
                 />
 
                 <div className='w-100 text-center'>

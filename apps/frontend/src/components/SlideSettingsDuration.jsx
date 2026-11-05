@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
 import { Form, Row, Col } from 'react-bootstrap';
+import { useSlides } from '../context/SlidesContext';
 
-const SlideSettingsDuration = ({ slides, currentSlideIndex, setDuration, duration }) => {
-
+const SlideSettingsDuration = ({ slides, currentSlideIndex }) => {
+    const { updateSlide, applyToAll } = useSlides();
     const [durationToAll, setDurationToAll] = useState(false);
+
+    const duration = slides[currentSlideIndex].duration;
+
+    const setDuration = (value) => {
+        updateSlide(currentSlideIndex, { duration: Number(value) || 1 });
+    };
+
+    const handleApplyToAll = () => {
+        setDurationToAll(!durationToAll);
+        applyToAll({ duration: slides[currentSlideIndex].duration });
+    };
 
     return (
         <Form.Group as={Row} controlId="duration" >
@@ -12,12 +24,7 @@ const SlideSettingsDuration = ({ slides, currentSlideIndex, setDuration, duratio
                 <Form.Range
                     disabled={durationToAll}
                     value={duration}
-                    onChange={e => {
-                        setDuration(e.target.value);
-                        slides[currentSlideIndex].duration = e.target.value;
-                        localStorage.setItem('slides', JSON.stringify(slides));
-                        window.dispatchEvent(new Event('storage'));
-                    }}
+                    onChange={e => setDuration(e.target.value)}
                     min='1'
                     max='5'
                     name='duration'
@@ -29,25 +36,13 @@ const SlideSettingsDuration = ({ slides, currentSlideIndex, setDuration, duratio
                     style={{ width: '35px' }}
                     disabled={durationToAll}
                     value={duration}
-                    onChange={e => {
-                        setDuration(e.target.value);
-                        slides[currentSlideIndex].duration = e.target.value;
-                        localStorage.setItem('slides', JSON.stringify(slides));
-                        window.dispatchEvent(new Event('storage'));
-                    }}
+                    onChange={e => setDuration(e.target.value)}
                 />
             </Col>
             <Col>
                 <Form.Check
                     label={`Apply to all`}
-                    onChange={() => {
-                        setDurationToAll(!durationToAll);
-                        slides.forEach(slide => {
-                            slide.duration = slides[currentSlideIndex].duration;
-                        });
-                        localStorage.setItem('slides', JSON.stringify(slides));
-                        window.dispatchEvent(new Event('storage'));
-                    }}
+                    onChange={handleApplyToAll}
                 />
             </Col>
         </Form.Group>

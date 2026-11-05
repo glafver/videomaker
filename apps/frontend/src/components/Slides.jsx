@@ -1,19 +1,14 @@
-import React from 'react'
-import Slide from './Slide'
+import React from 'react';
+import Slide from './Slide';
 import SortableList, { SortableItem } from "react-easy-sort";
-import arrayMove from "array-move";
+import { useSlides } from '../context/SlidesContext';
 
-const Slides = ({
-    setCurrentSlideIndex,
-    currentSlideIndex,
-    slides,
-    setSlides
-}) => {
+const Slides = ({ setCurrentSlideIndex, currentSlideIndex, slides }) => {
+    const { reorder } = useSlides();
 
     const onSortEnd = (oldIndex, newIndex) => {
-        setCurrentSlideIndex(newIndex)
-        setSlides((array) => arrayMove(array, oldIndex, newIndex));
-        localStorage.setItem('slides', JSON.stringify(arrayMove(slides, oldIndex, newIndex)))
+        setCurrentSlideIndex(newIndex);
+        reorder(oldIndex, newIndex);
     };
 
     return (
@@ -33,7 +28,7 @@ const Slides = ({
                     draggedItemClassName="sortable-slide-dragged"
                 >
                     {slides && slides.map((item, index) => (
-                        <SortableItem key={index}>
+                        <SortableItem key={item.name}>
                             <div className='sortable-slide-wrapper' style={{ width: `${item.duration * 100}px` }}>
                                 <Slide
                                     image={item}
@@ -47,7 +42,7 @@ const Slides = ({
                 </SortableList>
             </div>
         </>
-    )
-}
+    );
+};
 
-export default Slides
+export default Slides;

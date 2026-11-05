@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import axios from 'axios';
 import Container from 'react-bootstrap/Container';
 import UploadImages from '../components/UploadImages.jsx';
 import HowTo from '../components/HowTo.jsx';
@@ -7,6 +8,15 @@ import Testimonials from '../components/Testimonials.jsx';
 import { Bounce } from 'react-awesome-reveal';
 
 const HomePage = () => {
+
+    useEffect(() => {
+        // Wake up the server (it may go to sleep if unused for a while).
+        axios.get(`${import.meta.env.VITE_SERVER_BASE_URL}/status/wake_up`);
+        // Returning to the home page starts a fresh session.
+        localStorage.removeItem('videoURL');
+        localStorage.removeItem('orderID');
+        localStorage.removeItem('soundtrack');
+    }, []);
 
     return (
         <div className='text-center page'>

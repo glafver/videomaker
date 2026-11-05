@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import Alert from 'react-bootstrap/Alert';
 import { useDropzone } from 'react-dropzone';
-import useImages from '../hooks/useImages';
+import { useSlides } from '../context/SlidesContext';
 import { Zoom } from 'react-awesome-reveal';
 import ClipLoader from "react-spinners/ClipLoader";
 import ImageGrid from '../components/ImageGrid';
@@ -9,16 +9,13 @@ import { IoIosArrowForward } from "react-icons/io";
 import { useNavigate } from 'react-router-dom';
 
 const UploadImages = () => {
-    const { upload, isUploading, isError, slides } = useImages();
+    const { upload, isUploading, error, slides, maxSlides } = useSlides();
     const navigate = useNavigate();
     const maxSize = 5 * 1024 * 1024;
-    const maxFiles = 6;
 
     const [message, setMessage] = useState('');
 
-    const fileInputRef = useRef();
-
-    const { getRootProps, getInputProps } = useDropzone({
+    const { getRootProps, getInputProps, open } = useDropzone({
         accept: {
             'image/jpeg': [],
             'image/png': [],
@@ -29,16 +26,16 @@ const UploadImages = () => {
             if (!acceptedFiles.length) {
                 return;
             }
-            if (acceptedFiles.length > maxFiles) {
-                setMessage('You can upload only ' + maxFiles + ' photos!');
+            if (acceptedFiles.length > maxSlides) {
+                setMessage('You can upload only ' + maxSlides + ' photos!');
                 return;
             }
-            if ((~maxFiles) == (~slides.length)) {
+            if (slides.length >= maxSlides) {
                 setMessage('You have already uploaded the maximum possible number of photos!');
                 return;
             }
-            if (acceptedFiles.length > (maxFiles - slides.length)) {
-                setMessage('You have only ' + (maxFiles - slides.length) + ' files left to upload.');
+            if (acceptedFiles.length > (maxSlides - slides.length)) {
+                setMessage('You have only ' + (maxSlides - slides.length) + ' files left to upload.');
                 return;
             }
 
@@ -55,9 +52,9 @@ const UploadImages = () => {
     });
 
     const handleAddClick = () => {
-        if ((~maxFiles) !== (~slides.length)) {
+        if (slides.length < maxSlides) {
             setMessage('');
-            fileInputRef.current.click();
+            open();
         }
     };
 
@@ -67,11 +64,11 @@ const UploadImages = () => {
                 <div className='fw-bold mb-3 vm-rect'>Quick start</div>
                 <div {...getRootProps()} className="dropzone-wrapper"
                     onMouseDown={() => {
-                        if ((~maxFiles) !== (~slides.length)) {
+                        if (slides.length < maxSlides) {
                             setMessage('');
                         }
                     }}>
-                    <input {...getInputProps()} ref={fileInputRef} />
+                    <input {...getInputProps()} />
                     <Zoom >
                         <div>
                             <span>
@@ -89,7 +86,7 @@ const UploadImages = () => {
                     </Zoom>
                 </div>
 
-                {isError && <Alert variant='danger'>{isError.message}</Alert>}
+                {error && <Alert variant='danger'>{error.message}</Alert>}
                 {message && <Alert variant='danger'>{message}</Alert>}
                 {isUploading && (
                     <div style={{
@@ -110,7 +107,7 @@ const UploadImages = () => {
             </div>
             {slides && slides.length
                 ? <div className='images-wrapper' >
-                    <ImageGrid slides={slides} setMessage={setMessage} onAddClick={handleAddClick} max={maxFiles} />
+                    <ImageGrid slides={slides} setMessage={setMessage} onAddClick={handleAddClick} max={maxSlides} />
                     <button className='button-18 mt-5' onClick={() => { navigate('/edit_video'); }}>Continue <IoIosArrowForward className='ms-3' /> </button>
 
                 </div>

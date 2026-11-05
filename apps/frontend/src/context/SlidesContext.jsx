@@ -1,0 +1,130 @@
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { ref, getDownloadURL, uploadBytesResumable, deleteObject } from 'firebase/storage';
+import { storage } from '../firebase';
+
+const SlidesContext = createContext(null);
+
+const SLIDES_KEY = 'slides';
+const USER_ID_KEY = 'userID';
+
+const MAX_SLIDES = 6;
+
+const readSlides = () => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(SLIDES_KEY) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+};
+
+const getUserId = () => {
+    let userID = localStorage.getItem(USER_ID_KEY);
+    if (!userID) {
+        userID = crypto.randomUUID();
+        localStorage.setItem(USER_ID_KEY, userID);
+    }
+    return userID;
+};
+
+const extensionOf = (filename) => {
+    const idx = filename.lastIndexOf('.');
+    return idx >= 0 ? filename.substring(idx + 1) : 'jpg';
+};
+
+export const SlidesProvider = ({ children }) => {
+    const [slides, setSlides] = useState(readSlides);
+    const [isUploading, setIsUploading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Persist slides whenever they change (single source of truth).
+    useEffect(() => {
+        localStorage.setItem(SLIDES_KEY, JSON.stringify(slides));
+    }, [slides]);
+
+    const upload = useCallback(async (image) => {
+        setIsUploading(true);
+        setError(null);
+        try {
+            const userID = getUserId();
+            const storageFilename = `${crypto.randomUUID()}.${extensionOf(image.name)}`;
+            const storageRef = ref(storage, `/${userID}/${storageFilename}`);
+
+            await uploadBytesResumable(storageRef, image);
+            const url = await getDownloadURL(storageRef);
+
+            const slide = {
+                name: storageFilename,
+                path: storageRef.fullPath,
+                url,
+                duration: 1,
+                transition: 'fade'
+            };
+
+            setSlides((prev) => [slide, ...prev]);
+        } catch (e) {
+            setError(e);
+        } finally {
+            setIsUploading(false);
+        }
+    }, []);
+
+    const deleteSlide = useCallback(async (image) => {
+        try {
+            const storageRef = ref(storage, image.path);
+            await deleteObject(storageRef);
+        } catch (e) {
+            console.error('Error deleting image from storage:', e);
+        }
+        setSlides((prev) => prev.filter((slide) => slide.name !== image.name));
+    }, []);
+
+    const deleteSlideLocal = useCallback((image) => {
+        setSlides((prev) => prev.filter((slide) => slide.name !== image.name));
+    }, []);
+
+    const updateSlide = useCallback((index, patch) => {
+        setSlides((prev) => prev.map((slide, i) => (i === index ? { ...slide, ...patch } : slide)));
+    }, []);
+
+    const applyToAll = useCallback((patch) => {
+        setSlides((prev) => prev.map((slide) => ({ ...slide, ...patch })));
+    }, []);
+
+    const reorder = useCallback((oldIndex, newIndex) => {
+        setSlides((prev) => {
+            const next = [...prev];
+            const [moved] = next.splice(oldIndex, 1);
+            next.splice(newIndex, 0, moved);
+            return next;
+        });
+    }, []);
+
+    const clearSlides = useCallback(() => {
+        setSlides([]);
+    }, []);
+
+    const value = useMemo(() => ({
+        slides,
+        isUploading,
+        error,
+        maxSlides: MAX_SLIDES,
+        upload,
+        deleteSlide,
+        deleteSlideLocal,
+        updateSlide,
+        applyToAll,
+        reorder,
+        clearSlides
+    }), [slides, isUploading, error, upload, deleteSlide, deleteSlideLocal, updateSlide, applyToAll, reorder, clearSlides]);
+
+    return <SlidesContext.Provider value={value}>{children}</SlidesContext.Provider>;
+};
+
+export const useSlides = () => {
+    const ctx = useContext(SlidesContext);
+    if (!ctx) {
+        throw new Error('useSlides must be used within a SlidesProvider');
+    }
+    return ctx;
+};

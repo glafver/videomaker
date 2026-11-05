@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Container } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import useDeleteImage from '../hooks/useDeleteImage';
 import { WhatsappShareButton, WhatsappIcon, TelegramShareButton, TelegramIcon, FacebookMessengerShareButton, FacebookMessengerIcon, EmailShareButton, EmailIcon } from "react-share";
 import { IoMdCloudDownload } from "react-icons/io";
 import { AttentionSeeker } from 'react-awesome-reveal';
+import { useSlides } from '../context/SlidesContext';
 
 const VideoPage = () => {
 
@@ -12,17 +12,14 @@ const VideoPage = () => {
     const [copied, setCopied] = useState(false);
 
     const navigate = useNavigate();
-
-    const deleteImageMutation = useDeleteImage();
+    const { slides, deleteSlide } = useSlides();
 
     const shareURL = `${import.meta.env.VITE_DEPLOY_URL}/share/${localStorage.getItem('userID')}/${localStorage.getItem('orderID')}`;
     const quote = 'Have a look at my video!';
 
-    const clearAll = async () => {
-        const slidesLocal = JSON.parse(localStorage.getItem('slides') || '[]');
-        localStorage.removeItem('slides');
-        slidesLocal.forEach(slide => {
-            deleteImageMutation.mutate(slide);
+    const clearAll = () => {
+        slides.forEach(slide => {
+            deleteSlide(slide);
         });
         navigate('/');
     };
