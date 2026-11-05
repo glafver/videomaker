@@ -52,9 +52,10 @@ const RESOLUTIONS = {
 // Font used for captions (drawtext). Bundled so it works inside the Docker image.
 const CAPTION_FONT = path.join(__dirname, 'assets', 'caption-font.ttf');
 
-// Escape a filesystem path so it can be used inside an ffmpeg filter graph.
-// On Windows the drive colon and backslashes would otherwise break the filter parser.
-const escapeFilterPath = (filepath) => filepath.replace(/\\/g, '/').replace(/:/g, '\\:');
+// Convert an absolute path to one relative to __dirname (with forward slashes)
+// so it can be used inside an ffmpeg filter graph. Relative paths avoid the
+// Windows drive colon and backslashes that would otherwise break the parser.
+const relativeFilterPath = (filepath) => path.relative(__dirname, filepath).replace(/\\/g, '/');
 
 // ImageMagick binary: prefer v7 (`magick`) and fall back to v6 (`convert`).
 // Override with IMAGEMAGICK_BIN if needed.
@@ -235,7 +236,7 @@ const createVideo = (id, instructions, paths) => {
                 const captionFile = path.join(__dirname, id, `caption-${i}.txt`);
                 fs.writeFileSync(captionFile, caption, 'utf8');
                 filters.push(
-                    `${current}drawtext=fontfile=${escapeFilterPath(CAPTION_FONT)}:textfile=${escapeFilterPath(captionFile)}:fontcolor=white:fontsize=${captionFontSize}:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.35:boxborderw=16[c${i}]`
+                    `${current}drawtext=fontfile=${relativeFilterPath(CAPTION_FONT)}:textfile=${relativeFilterPath(captionFile)}:fontcolor=white:fontsize=${captionFontSize}:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.35:boxborderw=16[c${i}]`
                 );
                 current = `[c${i}]`;
                 hasFilter = true;
@@ -275,7 +276,7 @@ const createVideo = (id, instructions, paths) => {
 
         console.log('ffmpeg', commandArgs.join(' '));
 
-        const ffmpeg = spawn('ffmpeg', commandArgs);
+        const ffmpeg = spawn('ffmpeg', commandArgs, { cwd: __dirname });
 
         ffmpeg.stdout.on('data', (data) => {
             const text = data.toString();
