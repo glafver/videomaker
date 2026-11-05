@@ -21,7 +21,7 @@ const SlideSettingsSondtrack = () => {
     };
 
     useEffect(() => {
-        setSoundtrack(localStorage.getItem('soundtrack'));
+        setSoundtrack(localStorage.getItem('soundtrack') || 'none');
     }, []);
 
 

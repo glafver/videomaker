@@ -19,7 +19,7 @@ const VideoPage = () => {
     const quote = 'Have a look at my video!';
 
     const clearAll = async () => {
-        let slidesLocal = JSON.parse(localStorage.getItem('slides'));
+        const slidesLocal = JSON.parse(localStorage.getItem('slides') || '[]');
         localStorage.removeItem('slides');
         slidesLocal.forEach(slide => {
             deleteImageMutation.mutate(slide);
