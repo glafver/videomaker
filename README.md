@@ -60,3 +60,26 @@ Useful scripts (from the repo root):
 
 The visual identity uses a sage / coral palette with the Gilroy typeface.
 See `apps/frontend/src/assets/scss/_colors.scss` and `_fontStyles.scss`.
+
+## Cloud sync (Firestore)
+
+Projects are auto-saved to Firestore so they can be continued on another device.
+Use the **"Copy project link"** button on the home page, then open the link on
+another device to load the slides and settings.
+
+> **Important:** enable Firestore in your Firebase project and allow the app to
+> read/write the `projects` collection. A permissive rule for development:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /projects/{projectId} {
+      allow read, write: if true;
+    }
+  }
+}
+```
+
+> Tighten these rules before production use. Cloud sync fails gracefully and
+> the app still works with local storage alone if Firestore is unavailable.

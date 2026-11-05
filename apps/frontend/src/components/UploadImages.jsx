@@ -14,6 +14,7 @@ const UploadImages = () => {
     const maxSize = 5 * 1024 * 1024;
 
     const [message, setMessage] = useState('');
+    const [linkCopied, setLinkCopied] = useState(false);
 
     const { getRootProps, getInputProps, open } = useDropzone({
         accept: {
@@ -56,6 +57,15 @@ const UploadImages = () => {
             setMessage('');
             open();
         }
+    };
+
+    const copyProjectLink = () => {
+        const userID = localStorage.getItem('userID');
+        const link = `${import.meta.env.VITE_DEPLOY_URL}/?project=${userID}`;
+        navigator.clipboard.writeText(link).then(() => {
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        });
     };
 
     return (
@@ -108,7 +118,10 @@ const UploadImages = () => {
             {slides && slides.length
                 ? <div className='images-wrapper' >
                     <ImageGrid slides={slides} setMessage={setMessage} onAddClick={handleAddClick} max={maxSlides} />
-                    <button className='button-18 mt-5' onClick={() => { navigate('/edit_video'); }}>Continue <IoIosArrowForward className='ms-3' /> </button>
+                    <div className='d-flex flex-column flex-sm-row justify-content-center align-items-center gap-3'>
+                        <button className='button-18 mt-5' onClick={() => { navigate('/edit_video'); }}>Continue <IoIosArrowForward className='ms-3' /> </button>
+                        <button className='button-19 mt-5' onClick={copyProjectLink}>{linkCopied ? 'Link copied!' : 'Copy project link'}</button>
+                    </div>
 
                 </div>
                 : null

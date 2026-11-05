@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { ref, getDownloadURL, uploadBytesResumable, deleteObject } from 'firebase/storage';
-import { storage } from '../firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { storage, db } from '../firebase';
 
 const SlidesContext = createContext(null);
 
@@ -53,7 +54,7 @@ export const SlidesProvider = ({ children }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Persist state whenever it changes (single source of truth).
+    // Persist state locally (single source of truth for the current device).
     useEffect(() => {
         localStorage.setItem(SLIDES_KEY, JSON.stringify(slides));
     }, [slides]);
@@ -61,6 +62,47 @@ export const SlidesProvider = ({ children }) => {
     useEffect(() => {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     }, [settings]);
+
+    // Auto-save the project to Firestore (debounced). Fails silently so the
+    // app keeps working with local storage alone if Firestore is unavailable.
+    useEffect(() => {
+        if (!slides.length) return;
+        const userID = getUserId();
+        const t = setTimeout(() => {
+            setDoc(doc(db, 'projects', userID), {
+                slides,
+                settings,
+                updatedAt: Date.now()
+            }, { merge: true }).catch((e) => {
+                console.warn('Cloud sync failed:', e);
+            });
+        }, 800);
+        return () => clearTimeout(t);
+    }, [slides, settings]);
+
+    // Load a shared project from Firestore when the URL contains ?project=<id>.
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const projectId = params.get('project');
+        if (!projectId) return;
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const snap = await getDoc(doc(db, 'projects', projectId));
+                if (cancelled) return;
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (Array.isArray(data.slides)) setSlides(data.slides);
+                    if (data.settings) setSettings((prev) => ({ ...prev, ...data.settings }));
+                    localStorage.setItem(USER_ID_KEY, projectId);
+                }
+            } catch (e) {
+                console.warn('Failed to load shared project:', e);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
 
     const upload = useCallback(async (image) => {
         setIsUploading(true);
