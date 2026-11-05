@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container } from 'react-bootstrap';
 import Slides from '../components/Slides';
 import SlideSettings from '../components/SlideSettings';
+import VideoSettings from '../components/VideoSettings';
 import { useNavigate } from 'react-router-dom';
 import StatusModal from '../components/StatusModal';
 import useCreateVideo from '../hooks/useCreateVideo';
@@ -33,6 +34,7 @@ const EditVideoPage = () => {
     return (
         <Container className='page'>
             <div>
+                <VideoSettings />
                 <div className='edit-wrapper'>
                     <div className='edit-left'>
                         {slides && slides.length !== 0 &&

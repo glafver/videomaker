@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useSlides } from '../context/SlidesContext';
 
 const useCreateVideo = () => {
 
@@ -7,15 +8,16 @@ const useCreateVideo = () => {
     const [orderId, setOrderId] = useState(null);
     const [progress, setProgress] = useState(0);
 
+    const { slides, settings } = useSlides();
+
     const create = async () => {
         setVideoStatus('PREPARING');
         setProgress(0);
 
-        const slidesLocal = JSON.parse(localStorage.getItem('slides') || '[]');
         const soundtrack = localStorage.getItem('soundtrack') || 'none';
 
         const data = JSON.stringify({
-            slideshow: slidesLocal.map(slide => {
+            slideshow: slides.map(slide => {
                 return {
                     url: slide.url,
                     duration: (~~slide.duration),
@@ -24,7 +26,9 @@ const useCreateVideo = () => {
             }),
             userID: localStorage.getItem('userID'),
             soundtrack: soundtrack === 'none' ? '' : soundtrack,
-            orderId: localStorage.getItem('orderID')
+            orderId: localStorage.getItem('orderID'),
+            aspectRatio: settings.aspectRatio,
+            kenBurns: settings.kenBurns
         });
 
         axios.post(`${import.meta.env.VITE_SERVER_BASE_URL}/video`, data, {

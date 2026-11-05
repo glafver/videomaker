@@ -39,6 +39,16 @@ const jobs = {};
 // Letterbox fill color used when an image's aspect ratio differs from the target.
 const LETTERBOX_COLOR = '#374048';
 
+// Output frame rate of the generated videos.
+const FPS = 25;
+
+// Supported output resolutions per aspect ratio.
+const RESOLUTIONS = {
+    '16:9': { width: 1024, height: 576 },
+    '1:1': { width: 1024, height: 1024 },
+    '9:16': { width: 576, height: 1024 }
+};
+
 // Only image URLs from Firebase Storage are allowed (SSRF protection).
 const ALLOWED_IMAGE_HOSTS = ['firebasestorage.googleapis.com', 'storage.googleapis.com'];
 
@@ -94,7 +104,7 @@ const downloadImage = async (url, filepath) => {
 
 // Scales and aligns images to the target resolution using ImageMagick.
 // If a picture's aspect ratio differs, it is centered and padded with the fill color.
-const alignPictures = (id, paths, { width = 1024, height = 576 } = {}) => {
+const alignPictures = (id, paths, { width, height }) => {
     for (let i = 0; i < paths.length; i++) {
         const output = path.join(__dirname, id, `ready-${i}.jpg`);
         execSync(
@@ -136,47 +146,83 @@ const createVideo = (id, instructions, paths) => {
     const amountOfSlides = instructions.slideshow.length;
 
     // Expected output length in seconds: sum of slide durations + 1s per transition.
-    // (Each transition overlaps 1 second, and the first/last slides carry 1s of padding.)
     const totalDuration = instructions.slideshow.reduce((sum, slide) => sum + slide.duration, 0) + (amountOfSlides - 1);
     const totalMicros = totalDuration * 1e6;
+
+    const resolution = RESOLUTIONS[instructions.aspectRatio] || RESOLUTIONS['16:9'];
+    const { width, height } = resolution;
+    const kenBurns = !!instructions.kenBurns;
 
     const commandArgs = ['-y'];
 
     try {
         const durationAddition = amountOfSlides > 1 ? 2 : 0;
 
-        let transition = '';
-
-        let i = 0;
-        let accumulatedOffset = 0;
-        const urls = instructions.slideshow.map(function (slide) {
+        // Padded duration (seconds) of each slide input.
+        const paddedDurations = instructions.slideshow.map((slide, i) => {
             const isFirstOrLast = (i === 0 || i + 1 === amountOfSlides);
-            const isLast = (i + 1 === amountOfSlides);
-            const isPreLast = (i + 2 === amountOfSlides);
-            commandArgs.push('-loop', '1', '-t', slide.duration + (amountOfSlides > 1 ? (isFirstOrLast ? 1 : durationAddition) : 0), '-i', paths[i]);
-
-            if (amountOfSlides > 1) {
-                accumulatedOffset += slide.duration;
-                if (!isLast) {
-                    transition += `[${i === 0 ? 0 : 'out' + i}][${i + 1}]xfade=transition=${slide.transition}:duration=1:offset=${accumulatedOffset}[out${++i}]${!isPreLast ? ';' : ''}`;
-                }
-                ++accumulatedOffset; // increment 1 for 1 second of transition
-            }
+            const pad = amountOfSlides > 1 ? (isFirstOrLast ? 1 : durationAddition) : 0;
+            return slide.duration + pad;
         });
+
+        // xfade offsets: offset_k = sum(durations[0..k]) + k.
+        const offsets = [];
+        let acc = 0;
+        for (let k = 0; k < amountOfSlides - 1; k++) {
+            acc += instructions.slideshow[k].duration;
+            offsets.push(acc);
+            acc += 1;
+        }
+
+        // Inputs. Ken Burns uses a single image frame (zoompan generates the motion);
+        // otherwise loop the image for its padded duration.
+        for (let i = 0; i < amountOfSlides; i++) {
+            if (kenBurns) {
+                commandArgs.push('-i', paths[i]);
+            } else {
+                commandArgs.push('-loop', '1', '-t', paddedDurations[i], '-i', paths[i]);
+            }
+        }
 
         if (instructions.soundtrack) {
             commandArgs.push('-i', instructions.soundtrack);
         }
 
+        const filters = [];
+
+        if (kenBurns) {
+            for (let i = 0; i < amountOfSlides; i++) {
+                const frames = Math.round(paddedDurations[i] * FPS);
+                filters.push(
+                    `[${i}:v]zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${FPS}[v${i}]`
+                );
+            }
+        }
+
         if (amountOfSlides > 1) {
-            commandArgs.push('-filter_complex', transition);
-            commandArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '25', '-map', `[out${i}]`);
+            for (let k = 0; k < amountOfSlides - 1; k++) {
+                const firstIn = k === 0 ? (kenBurns ? '[v0]' : '[0]') : `[out${k}]`;
+                const secondIn = kenBurns ? `[v${k + 1}]` : `[${k + 1}]`;
+                filters.push(
+                    `${firstIn}${secondIn}xfade=transition=${instructions.slideshow[k].transition}:duration=1:offset=${offsets[k]}[out${k + 1}]`
+                );
+            }
+        }
+
+        const filterComplex = filters.join(';');
+
+        if (amountOfSlides > 1) {
+            commandArgs.push('-filter_complex', filterComplex);
+            commandArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', FPS, '-map', `[out${amountOfSlides - 1}]`);
+        } else if (kenBurns) {
+            commandArgs.push('-filter_complex', filterComplex);
+            commandArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', FPS, '-map', '[v0]');
         } else {
-            commandArgs.push('-filter_complex', `concat=n=${urls.length}:v=1:a=0`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p');
+            commandArgs.push('-filter_complex', `concat=n=${amountOfSlides}:v=1:a=0`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p');
         }
 
         if (instructions.soundtrack) {
-            commandArgs.push('-shortest', '-map', `${urls.length}:a:0`);
+            commandArgs.push('-shortest', '-map', `${amountOfSlides}:a:0`);
         }
 
         // Report encoding progress to stdout so the frontend can show a progress bar.
@@ -259,16 +305,20 @@ app.post('/video', async (req, res) => {
         transition: slide.transition || 'fade'
     }));
 
+    const aspectRatio = ['16:9', '1:1', '9:16'].includes(req.body.aspectRatio) ? req.body.aspectRatio : '16:9';
+
     const instructions = {
         slideshow: normalizedSlideshow,
         userID,
-        soundtrack: typeof soundtrack === 'string' ? soundtrack : ''
+        soundtrack: typeof soundtrack === 'string' ? soundtrack : '',
+        aspectRatio,
+        kenBurns: !!req.body.kenBurns
     };
 
     try {
         const urls = normalizedSlideshow.map((slide) => slide.url);
         const paths = await downloadImages(id, urls);
-        alignPictures(id, paths);
+        alignPictures(id, paths, RESOLUTIONS[aspectRatio]);
         createVideo(id, instructions, paths);
 
         res.status(201).json({ id });

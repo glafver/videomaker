@@ -5,9 +5,15 @@ import { storage } from '../firebase';
 const SlidesContext = createContext(null);
 
 const SLIDES_KEY = 'slides';
+const SETTINGS_KEY = 'videomaker-settings';
 const USER_ID_KEY = 'userID';
 
 const MAX_SLIDES = 6;
+
+const DEFAULT_SETTINGS = {
+    aspectRatio: '16:9',
+    kenBurns: false
+};
 
 const readSlides = () => {
     try {
@@ -15,6 +21,15 @@ const readSlides = () => {
         return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
         return [];
+    }
+};
+
+const readSettings = () => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');
+        return { ...DEFAULT_SETTINGS, ...(parsed || {}) };
+    } catch (e) {
+        return { ...DEFAULT_SETTINGS };
     }
 };
 
@@ -34,13 +49,18 @@ const extensionOf = (filename) => {
 
 export const SlidesProvider = ({ children }) => {
     const [slides, setSlides] = useState(readSlides);
+    const [settings, setSettings] = useState(readSettings);
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Persist slides whenever they change (single source of truth).
+    // Persist state whenever it changes (single source of truth).
     useEffect(() => {
         localStorage.setItem(SLIDES_KEY, JSON.stringify(slides));
     }, [slides]);
+
+    useEffect(() => {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }, [settings]);
 
     const upload = useCallback(async (image) => {
         setIsUploading(true);
@@ -104,8 +124,13 @@ export const SlidesProvider = ({ children }) => {
         setSlides([]);
     }, []);
 
+    const updateSettings = useCallback((patch) => {
+        setSettings((prev) => ({ ...prev, ...patch }));
+    }, []);
+
     const value = useMemo(() => ({
         slides,
+        settings,
         isUploading,
         error,
         maxSlides: MAX_SLIDES,
@@ -115,8 +140,9 @@ export const SlidesProvider = ({ children }) => {
         updateSlide,
         applyToAll,
         reorder,
-        clearSlides
-    }), [slides, isUploading, error, upload, deleteSlide, deleteSlideLocal, updateSlide, applyToAll, reorder, clearSlides]);
+        clearSlides,
+        updateSettings
+    }), [slides, settings, isUploading, error, upload, deleteSlide, deleteSlideLocal, updateSlide, applyToAll, reorder, clearSlides, updateSettings]);
 
     return <SlidesContext.Provider value={value}>{children}</SlidesContext.Provider>;
 };
