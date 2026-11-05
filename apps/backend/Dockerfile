@@ -1,20 +1,15 @@
-FROM node:16-alpine3.16
+FROM node:24-alpine
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm install --omit=dev
 
-RUN apk update
-RUN apk add
-RUN apk add ffmpeg
-RUN apk add imagemagick
+RUN apk add --no-cache ffmpeg imagemagick
 
 COPY . .
 
 EXPOSE 3001
-
-#RUN npm run build
 
 CMD [ "node", "app.js" ]
