@@ -52,6 +52,10 @@ const RESOLUTIONS = {
 // Font used for captions (drawtext). Bundled so it works inside the Docker image.
 const CAPTION_FONT = path.join(__dirname, 'assets', 'caption-font.ttf');
 
+// Escape a filesystem path so it can be used inside an ffmpeg filter graph.
+// On Windows the drive colon and backslashes would otherwise break the filter parser.
+const escapeFilterPath = (filepath) => filepath.replace(/\\/g, '/').replace(/:/g, '\\:');
+
 // ImageMagick binary: prefer v7 (`magick`) and fall back to v6 (`convert`).
 // Override with IMAGEMAGICK_BIN if needed.
 const IMAGEMAGICK_BIN = (() => {
@@ -231,7 +235,7 @@ const createVideo = (id, instructions, paths) => {
                 const captionFile = path.join(__dirname, id, `caption-${i}.txt`);
                 fs.writeFileSync(captionFile, caption, 'utf8');
                 filters.push(
-                    `${current}drawtext=fontfile=${CAPTION_FONT}:textfile=${captionFile}:fontcolor=white:fontsize=${captionFontSize}:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.35:boxborderw=16[c${i}]`
+                    `${current}drawtext=fontfile=${escapeFilterPath(CAPTION_FONT)}:textfile=${escapeFilterPath(captionFile)}:fontcolor=white:fontsize=${captionFontSize}:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.35:boxborderw=16[c${i}]`
                 );
                 current = `[c${i}]`;
                 hasFilter = true;
