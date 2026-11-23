@@ -1,4 +1,3 @@
-import React from 'react';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import { X } from 'react-bootstrap-icons';
@@ -9,12 +8,11 @@ const Slide = ({ image, imgIndex, setCurrentSlideIndex, currentSlideIndex }) => 
 
     const handleDelete = () => {
         deleteSlide(image);
-        setCurrentSlideIndex(0);
     };
 
     return (
-        <Card className='sortable-slide' style={{ backgroundColor: `${imgIndex === currentSlideIndex ? '#fff' : ''}` }}>
-            <img src={image.url} className='sortable-slide-image' />
+        <Card className={`sortable-slide ${imgIndex === currentSlideIndex ? 'sortable-slide-active' : ''}`}>
+            <img src={image.url} className='sortable-slide-image' draggable={false} />
             <Button
                 className='sortable-slide-delete-button'
                 onClick={handleDelete}>

@@ -1,0 +1,503 @@
+// ------------------------------------------------------------------
+// Navigation link
+// ------------------------------------------------------------------
+.nav-link-simple {
+	color: $vm-text;
+	font-weight: 600;
+
+	&:hover {
+		color: $vm-primary;
+	}
+}
+
+// Keep the navbar on one line on phones.
+@media screen and (max-width: 600px) {
+	.navbar > .container {
+		flex-wrap: nowrap;
+		gap: 8px;
+	}
+
+	.navbar-brand {
+		flex: 0 0 auto;
+	}
+
+	.navbar-brand img {
+		height: 46px;
+		width: auto;
+	}
+
+	.navbar .ms-auto {
+		gap: 6px !important;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+
+	.navbar .ms-auto .nav-link-simple {
+		font-size: 0.85rem;
+	}
+
+	.navbar .ms-auto .button-18,
+	.navbar .ms-auto .button-19 {
+		padding: 6px 12px;
+		font-size: 0.8rem;
+		white-space: nowrap;
+	}
+}
+
+// ------------------------------------------------------------------
+// Auth (login / signup)
+// ------------------------------------------------------------------
+.auth-page {
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding-top: 60px;
+
+	.auth-card {
+		width: 100%;
+		max-width: 420px;
+		background-color: $vm-secondary;
+		padding: 40px 36px;
+		box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+
+		.auth-subtitle {
+			color: $gray_dark_videomaker;
+		}
+
+		.form-control {
+			border-radius: 0;
+		}
+
+		.auth-divider {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			color: $gray_dark_videomaker;
+
+			&::before,
+			&::after {
+				content: '';
+				flex: 1;
+				height: 1px;
+				background-color: $vm-primary;
+			}
+		}
+
+		.auth-toggle {
+			background: none;
+			border: none;
+			color: $vm-primary;
+			font-weight: 600;
+			padding: 0;
+
+			&:hover {
+				color: $vm-text;
+			}
+		}
+	}
+}
+
+// ------------------------------------------------------------------
+// Account
+// ------------------------------------------------------------------
+.account-page {
+	padding-top: 40px;
+}
+
+.account-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 16px;
+	margin-bottom: 32px;
+
+	.account-email {
+		color: $gray_dark_videomaker;
+	}
+}
+
+.account-project-add--dragover {
+	background-color: $vm-secondary;
+	border-style: solid;
+}
+
+
+
+.account-empty {
+	text-align: center;
+	background-color: $vm-secondary;
+	padding: 60px 24px;
+	margin-bottom: 24px;
+}
+
+.account-videos {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 24px;
+}
+
+.account-video-card {
+	background-color: $vm-secondary;
+	padding: 12px;
+	box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+
+	.account-video-player {
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		object-fit: contain;
+		background-color: $vm-text;
+	}
+
+	.account-video-meta {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		margin-top: 12px;
+	}
+}
+
+.account-video-actions {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.account-delete {
+	background: none;
+	border: 1px solid $vm-red;
+	color: $vm-red;
+	padding: 6px 16px;
+	border-radius: 100px;
+	white-space: nowrap;
+	cursor: pointer;
+
+	&:hover:not(:disabled) {
+		background-color: $vm-red;
+		color: #fff;
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+}
+
+.account-projects {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 24px;
+}
+
+.account-project {
+	background-color: $vm-secondary;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+}
+
+.account-project-link {
+	display: block;
+	color: inherit;
+	text-decoration: none;
+
+	&:hover .account-project-meta .fw-bold {
+		color: $vm-primary;
+	}
+}
+
+.account-project-photos {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: 1fr;
+	gap: 2px;
+	aspect-ratio: 16 / 9;
+	background-color: $vm-text;
+	overflow: hidden;
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		min-width: 0;
+	}
+}
+
+.account-project-noimg {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-size: 0.85rem;
+}
+
+.account-project-meta {
+	padding: 12px;
+}
+
+.account-project-add {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 240px;
+	padding: 2rem 1.25rem;
+	border: 2px dashed $vm-primary;
+	background-color: #fff;
+	color: $vm-text;
+	text-align: center;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: 0.3s ease;
+
+	&:hover {
+		background-color: $vm-secondary;
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+}
+
+.account-project-add-title {
+	font-weight: 700;
+	font-size: 1rem;
+}
+
+.account-project-add-hint {
+	font-size: 0.8rem;
+	color: $gray_dark_videomaker;
+}
+
+.account-section-title {
+	margin: 36px 0 16px;
+	font-size: 1.15rem;
+	font-weight: 700;
+}
+
+.project-back {
+	display: inline-block;
+	margin-bottom: 8px;
+	color: $gray_dark_videomaker;
+	font-size: 0.85rem;
+	text-decoration: none;
+
+	&:hover {
+		color: $vm-text;
+	}
+}
+
+.project-header-info {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.project-title {
+	margin-bottom: 4px;
+
+	// The heading itself is the editing field: no visible input frame, just a
+	// caret and a subtle dashed underline on hover/focus.
+	.project-title-input {
+		display: block;
+		width: 100%;
+		margin: 0;
+		padding: 0 0 2px;
+		border: 0;
+		border-bottom: 1px dashed transparent;
+		border-radius: 0;
+		background: transparent;
+		color: $vm-text;
+		font: inherit;
+		line-height: inherit;
+		text-align: left;
+		cursor: text;
+
+		&:hover {
+			border-bottom-color: $vm-secondary;
+		}
+
+		&:focus {
+			outline: none;
+			border-bottom-color: $vm-primary;
+		}
+	}
+}
+
+.project-photos {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	gap: 24px;
+}
+
+.photo-card {
+	position: relative;
+	width: 100%;
+	align-self: flex-start;
+	aspect-ratio: 4 / 3;
+	background-color: #fff;
+	overflow: hidden;
+	box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+}
+
+.photo-card-remove {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background-color: $vm-red;
+	color: #fff;
+	cursor: pointer;
+	z-index: 2;
+
+	svg {
+		font-size: 22px;
+	}
+
+	&:hover:not(:disabled) {
+		filter: brightness(0.9);
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+}
+
+.project-dropzone {
+	aspect-ratio: 4 / 3;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 16px 12px;
+	border: 2px dashed $vm-primary;
+	background-color: #fff;
+	color: $vm-text;
+	text-align: center;
+	font-size: 0.85rem;
+	cursor: pointer;
+	transition: 0.3s ease;
+
+	&:hover {
+		background-color: $vm-secondary;
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+}
+
+.project-dropzone--dragover {
+	background-color: $vm-secondary;
+	border-style: solid;
+}
+
+.project-dropzone-title {
+	font-weight: 700;
+	font-size: 1rem;
+}
+
+.project-dropzone-hint {
+	font-size: 0.8rem;
+	color: $gray_dark_videomaker;
+}
+
+.project-delete-zone {
+	margin-top: 44px;
+	padding-top: 20px;
+	border-top: 1px solid $vm-secondary;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+// ------------------------------------------------------------------
+// About
+// ------------------------------------------------------------------
+.about-page {
+	padding-top: 40px;
+
+	.about-lead {
+		font-size: 1.15rem;
+		color: $gray_dark_videomaker;
+		max-width: 640px;
+		margin: 0 auto;
+	}
+
+	.about-section {
+		margin-bottom: 40px;
+
+		h2 {
+			margin-bottom: 12px;
+		}
+	}
+
+	.about-tech-card {
+		background-color: $vm-secondary;
+		padding: 20px;
+		height: 100%;
+	}
+
+	.about-note {
+		background-color: $vm-secondary;
+		padding: 24px;
+		border-left: 4px solid $vm-primary;
+	}
+}
+
+// ------------------------------------------------------------------
+// Create page
+// ------------------------------------------------------------------
+.create-header {
+	padding-top: 40px;
+
+	.create-steps {
+		display: flex;
+		justify-content: center;
+		gap: 24px;
+		flex-wrap: wrap;
+	}
+
+	.create-step {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		color: $vm-text;
+		font-weight: 600;
+	}
+
+	.create-step-num {
+		display: inline-flex;
+		justify-content: center;
+		align-items: center;
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		background-color: $vm-primary;
+		color: #fff;
+		font-size: 0.9rem;
+	}
+}

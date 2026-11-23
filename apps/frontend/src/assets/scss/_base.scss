@@ -1,3 +1,33 @@
+html {
+    // Always reserve the scrollbar gutter so the navbar does not shift left or
+    // right when switching between pages of different height.
+    scrollbar-gutter: stable;
+}
+
+@font-face {
+    font-family: 'LatoCaption';
+    src: url('/fonts/captions/Lato-Regular.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'BebasCaption';
+    src: url('/fonts/captions/BebasNeue-Regular.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'CrimsonCaption';
+    src: url('/fonts/captions/CrimsonText-Regular.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'SpaceMonoCaption';
+    src: url('/fonts/captions/SpaceMono-Regular.ttf') format('truetype');
+    font-display: swap;
+}
+
 .App {
     min-height: 100vh;
     position: relative;
@@ -70,7 +100,7 @@ hr {
 }
 
 .button-18:active {
-    background: #09223b;
+    background: $vm-text;
     color: rgb(255, 255, 255, .7);
 }
 
@@ -78,6 +108,10 @@ hr {
     cursor: not-allowed;
     background: rgba(0, 0, 0, .08);
     color: rgba(0, 0, 0, .3);
+}
+
+.button-18.button-dark {
+    background-color: $vm-text;
 }
 
 .button-19 {
@@ -116,47 +150,8 @@ hr {
 
 .button-19:disabled {
     cursor: not-allowed;
-    background: rgba(255, 255, 255, .08);
-    color: rgba(255, 255, 255, .3);
+    background-color: $vm-secondary;
+    border-color: $vm-secondary;
+    color: $gray_dark_videomaker;
 }
 
-.delete-button {
-    position: absolute;
-    padding: 0px;
-    top: -15px;
-    right: -15px;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    background-color: $vm-red;
-    color: white;
-    border: none;
-
-    @media screen and (max-width: 900px) {
-        top: -9px;
-        right: -9px;
-    }
-
-    svg {
-        vertical-align: 0;
-        font-size: 40px
-    }
-}
-
-.delete-button:active {
-    background-color: $vm-red !important;
-}
-
-.delete-button:hover,
-.delete-button:focus {
-    background-color: $vm-red;
-    color: white;
-    border: none;
-    filter: brightness(.9);
-}
-
-.delete-button.btn:focus-visible {
-    background-color: $vm-red;
-    border: none !important;
-    outline: 0;
-}

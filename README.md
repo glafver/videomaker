@@ -55,6 +55,22 @@ Useful scripts (from the repo root):
 | `npm run dev:backend`  | Start the Express server |
 | `npm run build:frontend` | Production build of the client |
 | `npm run start:backend`  | Start the server (production) |
+| `npm test` | Run the frontend and backend test suites |
+| `npm run test:frontend` | Frontend unit/component tests (Vitest + Testing Library) |
+| `npm run test:backend` | Backend unit and API tests (Vitest + Supertest) |
+
+## Testing
+
+```bash
+npm test              # both workspaces
+npm run test:frontend # Vitest + jsdom + Testing Library
+npm run test:backend  # Vitest + Supertest (no ffmpeg required)
+```
+
+Backend tests cover the pure request/render helpers (`apps/backend/lib/video.js`)
+and the HTTP validation paths; they never start ffmpeg or touch Firebase.
+Frontend tests cover helpers, the shared video card, upload ordering in
+`SlidesContext` and the "create a new video" cleanup behaviour.
 
 ## Design
 

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Form, Row, Col } from 'react-bootstrap';
+import { useState } from 'react';
+import { Form } from 'react-bootstrap';
 import { useSlides } from '../context/SlidesContext';
 
 const SlideSettingsDuration = ({ slides, currentSlideIndex }) => {
@@ -18,34 +18,36 @@ const SlideSettingsDuration = ({ slides, currentSlideIndex }) => {
     };
 
     return (
-        <Form.Group as={Row} controlId="duration" >
-            <Form.Label className='m-0'>Duration: <span className='ms-2 fw-light' style={{ fontSize: '15px' }}>(sec.)</span></Form.Label>
-            <Col xs="10">
+        <div className='settings-field'>
+            <span className='settings-field-label'>
+                Duration <span className='settings-field-unit'>(sec.)</span>
+            </span>
+            <div className='duration-control'>
                 <Form.Range
+                    style={{ '--range-progress': `${((Number(duration) - 1) / 4) * 100}%` }}
                     disabled={durationToAll}
                     value={duration}
                     onChange={e => setDuration(e.target.value)}
                     min='1'
                     max='5'
-                    name='duration'
                     step={1}
+                    className='duration-range'
                 />
-            </Col>
-            <Col xs="2 d-flex align-items-center">
                 <Form.Control
-                    style={{ width: '35px' }}
+                    type='text'
+                    inputMode='numeric'
                     disabled={durationToAll}
                     value={duration}
                     onChange={e => setDuration(e.target.value)}
+                    className='duration-value'
                 />
-            </Col>
-            <Col>
-                <Form.Check
-                    label={`Apply to all`}
-                    onChange={handleApplyToAll}
-                />
-            </Col>
-        </Form.Group>
+            </div>
+            <Form.Check
+                label='Apply to all'
+                onChange={handleApplyToAll}
+                className='settings-check'
+            />
+        </div>
     );
 };
 

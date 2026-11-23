@@ -1,116 +1,637 @@
+.edit-page {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding-left: 24px;
+    padding-right: 24px;
+}
+
 .edit-wrapper {
     margin-top: 10px;
     margin-bottom: 10px;
     display: flex;
-    gap: 24px;
+    gap: 20px;
     flex-direction: column;
-    height: auto;
     width: 100%;
 
-    @media screen and (min-width: 992px) {
+    @media screen and (min-width: 900px) {
         flex-direction: row;
-        height: 363.94px;
-    }
-
-
-    @media screen and (min-width: 2500px) {
-        margin-top: 30px;
-        margin-bottom: 30px;
+        align-items: stretch;
     }
 }
 
 .edit-left {
-    background-color: $vm-secondary;
+    background-color: #fff;
+    border: 1px solid $vm-secondary;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    position: relative;
     width: 100%;
+    height: 340px;
+    overflow: hidden;
 
-    @media screen and (min-width: 992px) {
-        width: 50%;
-    }
-
-    .current-slide-wrapper {
-        aspect-ratio: 16/9;
-        background-color: $black_videomaker;
-        max-width: 100%;
-        max-height: 100%;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-
-        .current-slide-image {
-            height: 100%;
-        }
+    @media screen and (min-width: 900px) {
+        flex: 1 1 auto;
+        min-width: 0;
+        height: auto;
+        min-height: 540px;
     }
 }
 
 .edit-right {
-    background-color: $vm-secondary;
-    height: 100%;
+    background-color: #fff;
     width: 100%;
+    border: 1px solid $vm-secondary;
+    display: flex;
+    flex-direction: column;
 
-    hr {
-        margin: 0 0 0 0;
+    @media screen and (min-width: 900px) {
+        flex: 0 0 430px;
+        width: 430px;
+    }
+}
+
+.settings-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 18px;
+    background-color: #fff;
+    border-bottom: 1px solid $vm-secondary;
+}
+
+.settings-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: $vm-text;
+}
+
+.settings-clear {
+    background: none;
+    border: none;
+    padding: 0;
+    color: $gray_dark_videomaker;
+    font-size: 0.8rem;
+    cursor: pointer;
+
+    &:hover {
+        color: $vm-text;
+        text-decoration: underline;
+    }
+}
+
+.format-info-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: $gray_dark_videomaker;
+    cursor: pointer;
+    font-size: 18px;
+
+    &:hover,
+    &:focus {
+        color: $vm-text;
+    }
+}
+
+.format-info-popover {
+    max-width: 300px;
+    border: 1px solid $vm-secondary;
+    border-radius: 0;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+
+    .popover-body {
+        padding: 14px 16px;
+        color: $vm-text;
+        font-size: 0.82rem;
+    }
+}
+
+.format-info-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.format-info-list {
+    margin: 0;
+    padding-left: 16px;
+
+    li {
+        margin-bottom: 3px;
+    }
+}
+
+.settings-tabs {
+    display: flex;
+    padding: 0 8px;
+    border-bottom: 1px solid $vm-secondary;
+}
+
+.settings-tab {
+    position: relative;
+    flex: 1;
+    padding: 11px 4px;
+    border: none;
+    background: transparent;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: $gray_dark_videomaker;
+    cursor: pointer;
+
+    &:hover {
+        color: $vm-text;
+    }
+
+    &.active {
+        color: $vm-text;
+
+        &::after {
+            content: '';
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: -1px;
+            height: 2px;
+            background-color: $vm-text;
+        }
+    }
+}
+
+.settings-body {
+    padding: 0 18px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba($vm-text, 0.45) transparent;
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 6px;
+        background-color: rgba($vm-text, 0.45);
+
+        &:hover {
+            background-color: rgba($vm-text, 0.65);
+        }
+    }
+}
+
+.settings-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 0;
+}
+
+.settings-field + .settings-field {
+    border-top: 1px solid $vm-secondary;
+}
+
+.settings-field-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settings-field-head--split {
+    justify-content: space-between;
+}
+
+.settings-field-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: $vm-text;
+}
+
+.settings-field-unit {
+    font-weight: 400;
+    color: $gray_dark_videomaker;
+}
+
+.duration-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.duration-range {
+    flex: 1 1 auto;
+    margin: 0;
+}
+
+.duration-value {
+    width: 56px;
+    padding-left: 6px;
+    padding-right: 6px;
+    text-align: center;
+}
+
+.settings-check {
+    margin: 0;
+
+    .form-check-label {
+        font-size: 0.8rem;
         color: $gray_dark_videomaker;
+        cursor: pointer;
+    }
+}
+
+.crop-hint-overlay {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    z-index: 3;
+    padding: 6px 12px;
+    background-color: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 0.8rem;
+    pointer-events: none;
+}
+
+.caption-position-row {
+    display: flex;
+    gap: 6px;
+}
+
+.caption-pos-toggle {
+    display: flex;
+    gap: 6px;
+    flex: 0 0 auto;
+
+    .caption-pos-btn {
+        padding: 6px 8px;
+        font-size: 0.78rem;
+    }
+}
+
+.caption-font-select {
+    flex: 1 1 80px;
+    min-width: 50px;
+    width: auto;
+
+    .vm-select-toggle {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.82rem;
+    }
+}
+
+.caption-size-range {
+    flex: 1 1 50px;
+    min-width: 30px;
+    margin: 0;
+}
+
+.caption-logo-range {
+    flex: 1 1 60px;
+    min-width: 30px;
+    margin: 0;
+}
+
+.caption-pos-btn {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid $gray_dark_videomaker;
+    background-color: #fff;
+    color: $vm-text;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+
+    &:hover {
+        border-color: $vm-text;
     }
 
-    @media screen and (min-width: 992px) {
-        width: 50%;
+    &.active {
+        background-color: $vm-primary;
+        border-color: $vm-primary;
+        color: #fff;
+    }
+}
+
+.settings-field.settings-field--caption {
+    gap: 12px;
+    padding: 12px 0;
+}
+
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.caption-inline-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.caption-inline-control--font {
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.caption-style-value {
+    flex: 0 0 auto;
+    min-width: 32px;
+    text-align: right;
+    font-size: 0.8rem;
+    color: $vm-text;
+}
+
+.caption-bg-check {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: $vm-primary;
+    cursor: pointer;
+}
+
+.caption-color-input {
+    width: 40px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid $gray_dark_videomaker;
+    background-color: #fff;
+    cursor: pointer;
+    flex: 0 0 auto;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.caption-logo-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    img {
+        height: 32px;
+        min-width: 40px;
+        max-width: 80px;
+        object-fit: contain;
+        border: 1px solid $vm-secondary;
+        background-color: #fff;
+        padding: 2px;
+    }
+}
+
+.caption-logo-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid $vm-secondary;
+    background-color: #fff;
+    color: $gray_dark_videomaker;
+    cursor: pointer;
+    flex: 0 0 auto;
+
+    &:hover {
+        border-color: $vm-red;
+        color: $vm-red;
+    }
+}
+
+.caption-logo-upload {
+    min-height: 36px;
+}
+
+.preview-play-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background-color: $vm-secondary;
+    color: $vm-text;
+    cursor: pointer;
+    font-size: 10px;
+
+    &:hover:not(:disabled) {
+        background-color: $vm-primary;
+        color: #fff;
     }
 
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+}
+
+// Live transition preview (current -> next slide)
+.transition-preview {
+    position: relative;
+    flex: 1 1 auto;
+    width: 100%;
+    background-color: #fff;
+    overflow: hidden;
+
+    .transition-preview-video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .transition-preview-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        color: $vm-text;
+        font-size: 1rem;
+    }
+}
+
+.crop-container {
+    position: relative;
+    flex: 1 1 auto;
+    width: 100%;
+    background-color: #fff;
+    overflow: hidden;
+    cursor: move;
+    touch-action: none;
+
+    .crop-image {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .crop-image-area {
+        position: absolute;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .crop-frame {
+        position: absolute;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+
+        .crop-caption {
+            max-width: 90%;
+            padding: 6px 14px;
+            background-color: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .crop-caption-group {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .crop-caption-logo {
+            max-width: 90%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+    }
 }
 
 .form-range {
-    position: relative;
-    top: 5px;
+    --range-progress: 0%;
+    width: 100%;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    appearance: none;
+    cursor: pointer;
+
+    &::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 999px;
+        background: linear-gradient(
+            to right,
+            $vm-text 0%,
+            $vm-text var(--range-progress),
+            $vm-secondary var(--range-progress),
+            $vm-secondary 100%
+        );
+    }
+
+    &::-moz-range-track {
+        height: 4px;
+        border-radius: 999px;
+        background: $vm-secondary;
+    }
+
+    &::-moz-range-progress {
+        height: 4px;
+        border-radius: 999px;
+        background: $vm-text;
+    }
 
     &::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
-        background: $vm-primary;
-        cursor: pointer;
-        margin-top: -7px;
+        width: 16px;
+        height: 16px;
+        margin-top: -6px;
+        border-radius: 50%;
+        background: $vm-text;
+        border: none;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
 
         &:active,
         &:focus {
-            background: $vm-primary;
+            background: $vm-text;
         }
     }
 
     &::-moz-range-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        cursor: pointer;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: $vm-text;
+        border: none;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
 
         &:active,
         &:focus {
-            background: $vm-primary;
+            background: $vm-text;
         }
     }
 
-    &::-webkit-slider-runnable-track {
-        background: $gray_dark_videomaker;
-        height: 2px;
+    &:hover::-webkit-slider-thumb,
+    &:active::-webkit-slider-thumb {
+        transform: scale(1.2);
     }
 
-    &::-moz-range-track {
-        background: $gray_dark_videomaker;
-        height: 2px;
+    &:hover::-moz-range-thumb,
+    &:active::-moz-range-thumb {
+        transform: scale(1.2);
+    }
+
+    &:focus::-webkit-slider-thumb {
+        box-shadow: 0 0 0 4px rgba(52, 63, 70, 0.18);
+    }
+
+    &:focus::-moz-range-thumb {
+        box-shadow: 0 0 0 4px rgba(52, 63, 70, 0.18);
     }
 }
 
 .form-range:focus {
     outline: none;
     box-shadow: none;
-
-    &::-moz-range-thumb {
-        box-shadow: none !important;
-    }
-
-    &::-webkit-slider-thumb {
-        box-shadow: none !important;
-    }
 }
 
 .form-check {
@@ -138,57 +659,33 @@
     font-weight: bold;
 }
 
-.settings-wrapper {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-
-    @media screen and (min-width: 992px) {
-        flex-direction: row;
-    }
-}
-
 .transition-wrapper {
     width: 100%;
-    padding: 16px;
-
-    .transition-img {
-        margin-top: 4px;
-        height: 60px;
-        aspect-ratio: 16/9;
-    }
-
-    @media screen and (min-width: 992px) {
-        width: 50%;
-        padding-right: 16px;
-        padding-bottom: 0;
-        border-right: 1px solid $gray_dark_videomaker;
-        border-bottom: 0;
-    }
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }
 
 .soundtrack-wrapper {
     width: 100%;
-    padding: 16px;
-    border-top: 1px solid $gray_dark_videomaker;
-
-    @media screen and (min-width: 992px) {
-        width: 50%;
-        border-top: none;
-    }
 }
 
-.sortable-slides-description {
-    margin-bottom: 10px;
-    text-align: center;
+.soundtrack-group {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
 
-    @media screen and (min-width: 992px) {
-        text-align: right;
-    }
+.settings-footer {
+    padding: 12px 18px 16px;
+    border-top: 1px solid $vm-secondary;
+    font-size: 0.8rem;
+    color: $gray_dark_videomaker;
 }
 
 .sortable-slides-row-wrapper {
     overflow: auto;
+    margin-top: 56px;
     margin-bottom: 20px;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
 }
@@ -223,7 +720,7 @@
 
     width: fit-content;
     min-width: 100%;
-    --background: rgba(0, 0, 0, .35);
+    --background: #{$vm-primary};
     --size: 10px;
     background-image:
         linear-gradient(to right, var(--background) var(--size), transparent var(--size)),
@@ -243,12 +740,26 @@
 
     .sortable-slide {
         border-radius: 0;
-        background-color: #d3d3d3;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        background-color: transparent;
+
+        &.sortable-slide-active {
+            border-color: #fff;
+        }
 
         .sortable-slide-image {
             object-fit: cover;
             height: 100px;
-            margin: 2px;
+            margin: 0;
+            opacity: 0.55;
+            transition: opacity 0.15s ease;
+            pointer-events: none;
+            -webkit-user-drag: none;
+            user-select: none;
+        }
+
+        &.sortable-slide-active .sortable-slide-image {
+            opacity: 1;
         }
 
         .card-footer {
@@ -259,7 +770,7 @@
             z-index: 1;
             width: 100%;
             height: 100%;
-            background-color: #d3d3d300;
+            background-color: transparent;
             font-size: 25px;
             text-align: center;
 
@@ -269,11 +780,11 @@
         }
 
         .card-footer:hover {
-            background-color: #d3d3d394;
-
             span {
-                width: 100%;
-                color: #00000082;
+                width: auto;
+                color: #fff;
+                font-weight: 700;
+                text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
             }
         }
 
@@ -299,6 +810,31 @@
                 font-size: 40px
             }
         }
+    }
+}
+
+.filmstrip-add {
+    flex: 0 0 auto;
+    width: 100px;
+    height: 104px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    font-size: 26px;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+        background-color: rgba(255, 255, 255, 0.14);
+        border-color: #fff;
+        color: #fff;
+    }
+
+    &.filmstrip-add-uploading {
+        opacity: 0.6;
+        cursor: progress;
     }
 }
 
@@ -339,113 +875,132 @@
     padding: 0 !important;
 }
 
-.create-video-btn {
-    margin-left: 42%;
-    margin-bottom: 50px;
-
-    @media screen and (max-width: 994px) {
-        margin-left: 30%;
-    }
+.edit-create-btn {
+    margin-top: 48px;
 }
 
-.video-settings {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 16px 0;
-
-    .vm-rect {
-        align-self: center;
+// On laptops and large screens everything fits the viewport without page scroll:
+// the preview is sized to the photo's aspect ratio (no black bars when there's room),
+// and the film strip, the create button and the footer stay visible.
+@media screen and (min-width: 900px) {
+    .edit-page {
+        padding-bottom: 24px;
     }
 
-    .form-select {
-        color: $vm-text;
-        border-color: $gray_dark_videomaker;
+    .edit-wrapper {
+        --editor-height: min(max(300px, calc(100vh - 446px)), 620px);
+        height: var(--editor-height);
     }
 
-    .ken-burns-switch .form-check-input:checked {
-        background-color: $vm-primary;
-        border-color: $vm-primary;
-    }
-}
-
-// Live preview ----------------------------------------------
-.preview-modal {
-    .modal-content {
-        background-color: #000;
-        border: 0;
-        border-radius: 0;
+    .sortable-slides-row-wrapper {
+        margin-top: 24px;
+        margin-bottom: 16px;
     }
 
-    .preview-viewport {
-        position: relative;
-        background-color: #000;
+    .edit-create-btn {
+        margin-top: 20px;
+    }
+
+    // Preview stage has a fixed 3:2 fit area.
+    .edit-left {
+        flex: 0 0 auto;
+        width: calc(var(--editor-height) * 1.5);
+        min-height: 0;
+    }
+
+    // Settings take the remaining width.
+    .edit-right {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
         overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        max-width: 100%;
-
-        .preview-slide {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-
-        .preview-caption {
-            position: absolute;
-            left: 50%;
-            bottom: 16px;
-            transform: translateX(-50%);
-            color: white;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 6px 14px;
-            border-radius: 100px;
-            font-size: 16px;
-            white-space: nowrap;
-            max-width: 90%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-    }
-
-    .preview-controls {
-        color: white;
-
-        .text-muted {
-            color: #a6a6a6 !important;
-        }
     }
 }
 
-@keyframes vm-fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+// On laptops (below 1440) the settings panel is wide, so lay the fields out
+// in two columns instead of stretching them across the full width. On larger
+// monitors there is room for a single, comfortable column.
+@media screen and (min-width: 1024px) and (max-width: 1439.98px) {
+    .settings-body {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        column-gap: 28px;
+        align-content: start;
+        flex: 1 1 auto;
+    }
+
+    .settings-body:has(> .settings-field + .settings-field)::before {
+        content: '';
+        position: absolute;
+        top: 16px;
+        bottom: 16px;
+        left: 50%;
+        width: 1px;
+        background-color: $vm-secondary;
+        pointer-events: none;
+    }
+
+    // Caption tab: give the text column more room so the font/size/color row
+    // stays on one line, and the logo column the rest.
+    .settings-body:has(.settings-field--caption) {
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+    }
+
+    .settings-body:has(> .settings-field + .settings-field):has(.settings-field--caption)::before {
+        left: calc(62.5% - 8px);
+    }
+
+    .settings-field {
+        padding: 12px 0;
+    }
+
+    .settings-field + .settings-field {
+        border-top: 0;
+    }
+
+    .settings-body .settings-field:only-child {
+        grid-column: 1 / -1;
+    }
 }
 
-@keyframes vm-slide-in-right {
-    from { opacity: 0; transform: translateX(40px); }
-    to { opacity: 1; transform: translateX(0); }
+.clear-project-modal {
+    .modal-content {
+        border: 1px solid $vm-secondary;
+        border-radius: 0;
+        background-color: #fff;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
 }
 
-@keyframes vm-slide-in-left {
-    from { opacity: 0; transform: translateX(-40px); }
-    to { opacity: 1; transform: translateX(0); }
+.clear-project-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: $vm-text;
+    margin-bottom: 8px;
 }
 
-@keyframes vm-slide-in-up {
-    from { opacity: 0; transform: translateY(40px); }
-    to { opacity: 1; transform: translateY(0); }
+.clear-project-text {
+    color: $gray_dark_videomaker;
+    font-size: 0.95rem;
+    margin-bottom: 20px;
 }
 
-@keyframes vm-slide-in-down {
-    from { opacity: 0; transform: translateY(-40px); }
-    to { opacity: 1; transform: translateY(0); }
+.clear-project-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
-.preview-fade { animation: vm-fade-in 1s ease forwards; }
-.preview-slide-right { animation: vm-slide-in-right 1s ease forwards; }
-.preview-slide-left { animation: vm-slide-in-left 1s ease forwards; }
-.preview-slide-up { animation: vm-slide-in-up 1s ease forwards; }
-.preview-slide-down { animation: vm-slide-in-down 1s ease forwards; }
+.button-danger {
+    background-color: $vm-red !important;
+
+    &:hover,
+    &:focus {
+        filter: brightness(0.92);
+    }
+}

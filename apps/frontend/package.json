@@ -6,15 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "axios": "^1.7.9",
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
     "firebase": "^11.1.0",
+    "motion": "^14.10.1",
     "react": "^18.3.1",
-    "react-awesome-reveal": "^4.2.8",
     "react-bootstrap": "^2.10.5",
     "react-bootstrap-icons": "^1.11.4",
     "react-dom": "^18.3.1",
@@ -27,9 +29,13 @@
     "sass": "^1.83.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.7"
+    "jsdom": "^26.1.0",
+    "vite": "^6.0.7",
+    "vitest": "^3.2.7"
   }
 }

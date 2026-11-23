@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Row, Col } from 'react-bootstrap';
-import { IoCloudUploadOutline, IoTimerOutline, IoCloudDownloadOutline, IoRepeatOutline } from "react-icons/io5";
-import { PiSlideshow, PiSpinnerGap } from "react-icons/pi";
-import { Fade } from 'react-awesome-reveal';
+import { IoFolderOpenOutline, IoRepeatOutline, IoColorWandOutline, IoMusicalNotesOutline, IoCloudDownloadOutline } from "react-icons/io5";
+import { PiSpinnerGap } from "react-icons/pi";
+import { motion } from 'motion/react';
 
 const steps = [
-    { icon: <IoCloudUploadOutline />, heading: 'Start with Your Photos', text: 'Upload your favorite photos to get started.' },
-    { icon: <IoTimerOutline />, heading: 'Set Your Pace', text: 'Decide how long each slide should last.' },
-    { icon: <IoRepeatOutline />, heading: 'Arrange Your Slides', text: 'Feel free to change the order of slides to tell your story.' },
-    { icon: <PiSlideshow />, heading: 'Add Some Flair', text: 'Enhance your slideshow with transitions between slides.' },
-    { icon: <PiSpinnerGap />, heading: 'Sit Back and Relax', text: 'Just hit the button and wait for your video to be crafted.' },
-    { icon: <IoCloudDownloadOutline />, heading: 'Download and Enjoy', text: 'Save your video to your device and enjoy it anytime.' },
+    { icon: <IoFolderOpenOutline />, heading: 'Create a project', text: 'Sign in and add your property photos — drag and drop, or pick them from your device.' },
+    { icon: <IoRepeatOutline />, heading: 'Arrange your slides', text: 'Reorder the photos and set how long each one stays on screen.' },
+    { icon: <IoColorWandOutline />, heading: 'Make it yours', text: 'Pick a format, transitions and captions in your font and colours, and place your logo.' },
+    { icon: <IoMusicalNotesOutline />, heading: 'Add your music', text: 'Upload your own soundtrack to set the right mood.' },
+    { icon: <PiSpinnerGap />, heading: 'Preview and render', text: 'Check the live preview, hit create and let Videomaker render your video.' },
+    { icon: <IoCloudDownloadOutline />, heading: 'Share, download, repeat', text: 'Share the link or download the file — then make another video from the same project.' },
 ];
 
 const HowTo = () => {
@@ -31,16 +31,28 @@ const HowTo = () => {
 
     return (
         <div className='how-to-section'>
-            <Fade>
-                <Row className='px-2'>
-                    <Col md={6} style={{
+            <motion.div className='row px-2'>
+                <motion.div
+                    className='col-md-6'
+                    style={{
                         backgroundImage: `url("https://storage.googleapis.com/gafver_videomaker/6087807-5.jpg")`,
                         backgroundPosition: 'center',
                         backgroundSize: 'cover',
                         backgroundRepeat: 'no-repeat'
-                    }}>
-                    </Col>
-                    <Col md={6} className='d-flex flex-column'>
+                    }}
+                    initial={{ opacity: 0, x: -60 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.7, ease: 'easeOut' }}
+                >
+                </motion.div>
+                <motion.div
+                    className='col-md-6 d-flex flex-column'
+                    initial={{ opacity: 0, x: 60 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.7, ease: 'easeOut' }}
+                >
                         <div className='fs-3 fw-bold mb-4 py-4 header vm-center'>
                             How to use Videomaker?
                         </div>
@@ -63,9 +75,8 @@ const HowTo = () => {
                                 </Col>
                             </Row>
                         ))}
-                    </Col>
-                </Row>
-            </Fade>
+                </motion.div>
+            </motion.div>
         </div>
     );
 };

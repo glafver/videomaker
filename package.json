@@ -11,6 +11,11 @@
     "dev:backend": "npm run dev --workspace @videomaker/backend",
     "build:frontend": "npm run build --workspace @videomaker/frontend",
     "start:backend": "npm run start --workspace @videomaker/backend",
-    "dev": "npm run dev:frontend"
+    "dev": "npm run dev:frontend",
+    "test": "npm run test --workspaces --if-present",
+    "test:frontend": "npm run test --workspace @videomaker/frontend",
+    "test:backend": "npm run test --workspace @videomaker/backend",
+    "deploy:functions": "npx firebase-tools deploy --only functions",
+    "logs:functions": "npx firebase-tools functions:log"
   }
 }

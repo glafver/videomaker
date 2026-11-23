@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Container } from 'react-bootstrap';
 import Slides from '../components/Slides';
 import SlideSettings from '../components/SlideSettings';
-import VideoSettings from '../components/VideoSettings';
+import CropPreview from '../components/CropPreview';
+import TransitionPreview from '../components/TransitionPreview';
 import { useNavigate } from 'react-router-dom';
 import StatusModal from '../components/StatusModal';
-import PreviewModal from '../components/PreviewModal';
 import useCreateVideo from '../hooks/useCreateVideo';
 import { useSlides } from '../context/SlidesContext';
 
 const EditVideoPage = () => {
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-    const [showPreview, setShowPreview] = useState(false);
+    const [transitionPreview, setTransitionPreview] = useState(null);
+    const [activeTab, setActiveTab] = useState('slide');
+    const [imageRatio, setImageRatio] = useState(1.5);
     const navigate = useNavigate();
 
-    const { slides, settings } = useSlides();
+    const { slides, settings, updateSlide } = useSlides();
     const createVideo = useCreateVideo();
 
     useEffect(() => {
@@ -33,22 +35,50 @@ const EditVideoPage = () => {
         return null;
     }
 
+    const handlePreviewTransition = () => {
+        if (slides.length < 2) return;
+        const from = slides[currentSlideIndex];
+        const to = slides[(currentSlideIndex + 1) % slides.length];
+        setTransitionPreview({ from, to, transition: from.transition || 'fade' });
+    };
+
+    const handleTransitionDone = useCallback(() => setTransitionPreview(null), []);
+
     return (
-        <Container className='page'>
+        <Container fluid className='page edit-page'>
             <div>
-                <VideoSettings />
-                <div className='edit-wrapper'>
+                <div className='edit-wrapper' style={{ '--image-ratio': imageRatio }}>
                     <div className='edit-left'>
-                        {slides && slides.length !== 0 &&
-                            <div className='current-slide-wrapper'>
-                                <img
-                                    src={slides[currentSlideIndex].url} alt=""
-                                    className='current-slide-image' />
-                            </div>
-                        }
+                        {transitionPreview ? (
+                            <TransitionPreview
+                                from={transitionPreview.from}
+                                to={transitionPreview.to}
+                                transition={transitionPreview.transition}
+                                aspectRatio={settings.aspectRatio}
+                                onDone={handleTransitionDone}
+                            />
+                        ) : (
+                            <>
+                                <CropPreview
+                                    slide={slides[currentSlideIndex]}
+                                    aspectRatio={settings.aspectRatio}
+                                    onFocusChange={(fx, fy) => updateSlide(currentSlideIndex, { focusX: fx, focusY: fy })}
+                                    onImageRatio={setImageRatio}
+                                />
+                                {activeTab === 'video' && (
+                                    <div className='crop-hint-overlay'>Drag the frame to choose the crop area</div>
+                                )}
+                            </>
+                        )}
                     </div>
                     <div className='edit-right' >
-                        <SlideSettings slides={slides} currentSlideIndex={currentSlideIndex} />
+                        <SlideSettings
+                            slides={slides}
+                            currentSlideIndex={currentSlideIndex}
+                            onPreviewTransition={handlePreviewTransition}
+                            activeTab={activeTab}
+                            onTabChange={setActiveTab}
+                        />
                     </div>
                 </div>
                 <Slides
@@ -58,12 +88,10 @@ const EditVideoPage = () => {
                 />
 
                 <div className='w-100 text-center'>
-                    <button className='button-19 mt-5' onClick={() => { setShowPreview(true); }}>Preview</button>
-                    <button className='button-18 mt-5 ms-3' onClick={() => { createVideo.create(); }}>Create video! </button>
+                    <button className='button-18 edit-create-btn' onClick={() => { createVideo.create(); }}>Create video! </button>
                 </div>
 
-                <PreviewModal show={showPreview} onClose={() => { setShowPreview(false); }} slides={slides} settings={settings} />
-                <StatusModal videoStatus={createVideo.videoStatus} orderId={createVideo.orderId} setVideoStatus={createVideo.setVideoStatus} progress={createVideo.progress} />
+                <StatusModal videoStatus={createVideo.videoStatus} setVideoStatus={createVideo.setVideoStatus} progress={createVideo.progress} />
             </div>
         </Container>
     );

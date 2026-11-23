@@ -1,19 +1,35 @@
-import React from 'react';
+import { useRef } from 'react';
 import Slide from './Slide';
 import SortableList, { SortableItem } from "react-easy-sort";
+import { PlusLg } from 'react-bootstrap-icons';
 import { useSlides } from '../context/SlidesContext';
 
 const Slides = ({ setCurrentSlideIndex, currentSlideIndex, slides }) => {
-    const { reorder } = useSlides();
+    const { reorder, upload, isUploading, maxSlides } = useSlides();
+    const fileInputRef = useRef(null);
+
+    const canAdd = slides.length < maxSlides;
 
     const onSortEnd = (oldIndex, newIndex) => {
         setCurrentSlideIndex(newIndex);
         reorder(oldIndex, newIndex);
     };
 
+    const openFilePicker = () => {
+        if (!isUploading) fileInputRef.current?.click();
+    };
+
+    const handleFiles = async (e) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        const remaining = Math.max(0, maxSlides - slides.length);
+        for (const file of files.slice(0, remaining)) {
+            await upload(file);
+        }
+    };
+
     return (
         <>
-            <p className='sortable-slides-description'>Change the order of your slides by dragging them</p>
             <div className='sortable-slides-row-wrapper'
                 id='sortableSlidesRowWrapper'
                 onWheel={(e) => {
@@ -39,8 +55,25 @@ const Slides = ({ setCurrentSlideIndex, currentSlideIndex, slides }) => {
                             </div>
                         </SortableItem>
                     ))}
+                    {canAdd && (
+                        <div
+                            className={`filmstrip-add ${isUploading ? 'filmstrip-add-uploading' : ''}`}
+                            onClick={openFilePicker}
+                            title='Add photos'
+                        >
+                            <PlusLg />
+                        </div>
+                    )}
                 </SortableList>
             </div>
+            <input
+                ref={fileInputRef}
+                type='file'
+                accept='image/*'
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleFiles}
+            />
         </>
     );
 };

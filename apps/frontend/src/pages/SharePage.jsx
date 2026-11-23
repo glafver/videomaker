@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Container } from 'react-bootstrap';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
-import { useNavigate } from 'react-router-dom';
-import { AttentionSeeker } from 'react-awesome-reveal';
+import { motion } from 'motion/react';
 
 const SharePage = () => {
 
@@ -19,11 +18,11 @@ const SharePage = () => {
         }
 
         const storageRef = ref(storage, `/${id}/${order}.mp4`);
-        const url = getDownloadURL(storageRef)
+        getDownloadURL(storageRef)
             .then((res) => {
                 setUrl(res);
             })
-            .catch((error) => {
+            .catch(() => {
                 setError(true);
             });
 
@@ -35,7 +34,7 @@ const SharePage = () => {
                 {url &&
                     <>
                         <video className='video' controls disablePictureInPicture disableRemotePlayback controlsList="noplaybackrate nodownload">
-                            <source src={url} type="video/mp4" onError={(e) => { console.log(e); }} />
+                            <source src={url} type="video/mp4" />
                         </video>
                     </>
                 }
@@ -43,9 +42,16 @@ const SharePage = () => {
                     <>
                         <img src={'/images/404.png'} alt="" className='img404' />
                         <p className='img404text' >Sorry, the video you are looking for was not found.</p>
-                        <AttentionSeeker effect='heartBeat'>
-                            <button className='button-18 mt-5' onClick={() => { navigate('/'); }}>Create own video!</button>
-                        </AttentionSeeker>
+                        <motion.button
+                            className='button-18 mt-5'
+                            onClick={() => { navigate('/create'); }}
+                            animate={{ scale: [1, 1.04, 1] }}
+                            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                            whileHover={{ scale: 1.06 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            Create own video!
+                        </motion.button>
                     </>
                 }
 

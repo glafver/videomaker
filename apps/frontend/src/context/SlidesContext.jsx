@@ -1,26 +1,41 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { ref, getDownloadURL, uploadBytesResumable, deleteObject } from 'firebase/storage';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { storage, db } from '../firebase';
+import { getUserId } from '../helpers/user';
+import { getImageDimensions, getAspectRatio } from '../helpers/image';
 
 const SlidesContext = createContext(null);
 
 const SLIDES_KEY = 'slides';
 const SETTINGS_KEY = 'videomaker-settings';
-const USER_ID_KEY = 'userID';
 
 const MAX_SLIDES = 6;
 
+// 3:2 matches most listing/DSLR photos, so it is the default format.
 const DEFAULT_SETTINGS = {
-    aspectRatio: '16:9',
+    aspectRatio: '3:2',
     kenBurns: false
 };
+
+// Bumped when the default settings change, so existing local settings are
+// migrated once instead of keeping an outdated format forever.
+const SETTINGS_VERSION = 2;
+
+// Demo photos (from our public bucket) so new users can try the flow without
+// uploading anything first.
+const SAMPLE_SLIDES = [
+    { name: 'sample-1.jpg', path: '', url: 'https://storage.googleapis.com/gafver_videomaker/6087807-21.jpg', duration: 1, transition: 'fade', caption: '', captionPosition: 'bottom', focusX: 0.5, focusY: 0.5 },
+    { name: 'sample-2.jpg', path: '', url: 'https://storage.googleapis.com/gafver_videomaker/6085643-1%20SJ.jpg', duration: 1, transition: 'fade', caption: '', captionPosition: 'bottom', focusX: 0.5, focusY: 0.5 },
+    { name: 'sample-3.jpg', path: '', url: 'https://storage.googleapis.com/gafver_videomaker/6090335-25.jpg', duration: 1, transition: 'fade', caption: '', captionPosition: 'bottom', focusX: 0.5, focusY: 0.5 },
+];
 
 const readSlides = () => {
     try {
         const parsed = JSON.parse(localStorage.getItem(SLIDES_KEY) || '[]');
-        return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
+        const slides = Array.isArray(parsed) ? parsed : [];
+        return slides.map((s) => ({ ...s, focusX: s.focusX ?? 0.5, focusY: s.focusY ?? 0.5, captionPosition: s.captionPosition || 'bottom' }));
+    } catch {
         return [];
     }
 };
@@ -28,19 +43,17 @@ const readSlides = () => {
 const readSettings = () => {
     try {
         const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');
-        return { ...DEFAULT_SETTINGS, ...(parsed || {}) };
-    } catch (e) {
+        const settings = { ...DEFAULT_SETTINGS, ...(parsed || {}), kenBurns: false };
+
+        // Apply the new default once for people who had settings saved before.
+        if (!parsed || parsed.version !== SETTINGS_VERSION) {
+            settings.aspectRatio = DEFAULT_SETTINGS.aspectRatio;
+        }
+
+        return settings;
+    } catch {
         return { ...DEFAULT_SETTINGS };
     }
-};
-
-const getUserId = () => {
-    let userID = localStorage.getItem(USER_ID_KEY);
-    if (!userID) {
-        userID = crypto.randomUUID();
-        localStorage.setItem(USER_ID_KEY, userID);
-    }
-    return userID;
 };
 
 const extensionOf = (filename) => {
@@ -54,13 +67,19 @@ export const SlidesProvider = ({ children }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState(null);
 
+    // Latest slides for callbacks that must stay referentially stable.
+    const slidesRef = useRef(slides);
+    useEffect(() => {
+        slidesRef.current = slides;
+    }, [slides]);
+
     // Persist state locally (single source of truth for the current device).
     useEffect(() => {
         localStorage.setItem(SLIDES_KEY, JSON.stringify(slides));
     }, [slides]);
 
     useEffect(() => {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...settings, version: SETTINGS_VERSION }));
     }, [settings]);
 
     // Auto-save the project to Firestore (debounced). Fails silently so the
@@ -95,7 +114,7 @@ export const SlidesProvider = ({ children }) => {
                     const data = snap.data();
                     if (Array.isArray(data.slides)) setSlides(data.slides);
                     if (data.settings) setSettings((prev) => ({ ...prev, ...data.settings }));
-                    localStorage.setItem(USER_ID_KEY, projectId);
+                    localStorage.setItem('userID', projectId);
                 }
             } catch (e) {
                 console.warn('Failed to load shared project:', e);
@@ -104,40 +123,79 @@ export const SlidesProvider = ({ children }) => {
         return () => { cancelled = true; };
     }, []);
 
+    // Uploads one photo and returns the slide describing it. Does not touch the
+    // slides state, so the caller decides where the new slide goes.
+    const uploadFile = useCallback(async (image) => {
+        const userID = getUserId();
+        const storageFilename = `${crypto.randomUUID()}.${extensionOf(image.name)}`;
+        const storageRef = ref(storage, `/${userID}/${storageFilename}`);
+
+        await uploadBytesResumable(storageRef, image);
+        const url = await getDownloadURL(storageRef);
+
+        let originalRatio = null;
+        try {
+            const { width, height } = await getImageDimensions(image);
+            originalRatio = getAspectRatio(width, height);
+        } catch (e) {
+            originalRatio = null;
+        }
+
+        return {
+            name: storageFilename,
+            path: storageRef.fullPath,
+            url,
+            duration: 1,
+            transition: 'fade',
+            caption: '',
+            captionPosition: 'bottom',
+            focusX: 0.5,
+            focusY: 0.5,
+            originalRatio
+        };
+    }, []);
+
     const upload = useCallback(async (image) => {
         setIsUploading(true);
         setError(null);
         try {
-            const userID = getUserId();
-            const storageFilename = `${crypto.randomUUID()}.${extensionOf(image.name)}`;
-            const storageRef = ref(storage, `/${userID}/${storageFilename}`);
-
-            await uploadBytesResumable(storageRef, image);
-            const url = await getDownloadURL(storageRef);
-
-            const slide = {
-                name: storageFilename,
-                path: storageRef.fullPath,
-                url,
-                duration: 1,
-                transition: 'fade',
-                caption: ''
-            };
-
-            setSlides((prev) => [slide, ...prev]);
+            const slide = await uploadFile(image);
+            // New photos go to the end of the slideshow, never to the front.
+            setSlides((prev) => [...prev, slide]);
         } catch (e) {
             setError(e);
         } finally {
             setIsUploading(false);
         }
-    }, []);
+    }, [uploadFile]);
+
+    // Uploads several photos in parallel but appends them in the order the user
+    // picked them, so multi-file uploads keep their natural sequence.
+    const uploadMany = useCallback(async (images) => {
+        if (!images.length) return;
+        setIsUploading(true);
+        setError(null);
+        try {
+            const results = await Promise.allSettled(images.map((image) => uploadFile(image)));
+            const uploaded = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+            if (uploaded.length) {
+                setSlides((prev) => [...prev, ...uploaded]);
+            }
+            const failed = results.find((r) => r.status === 'rejected');
+            if (failed) setError(failed.reason);
+        } finally {
+            setIsUploading(false);
+        }
+    }, [uploadFile]);
 
     const deleteSlide = useCallback(async (image) => {
-        try {
-            const storageRef = ref(storage, image.path);
-            await deleteObject(storageRef);
-        } catch (e) {
-            console.error('Error deleting image from storage:', e);
+        if (image.path) {
+            try {
+                const storageRef = ref(storage, image.path);
+                await deleteObject(storageRef);
+            } catch (e) {
+                console.error('Error deleting image from storage:', e);
+            }
         }
         setSlides((prev) => prev.filter((slide) => slide.name !== image.name));
     }, []);
@@ -163,12 +221,81 @@ export const SlidesProvider = ({ children }) => {
         });
     }, []);
 
-    const clearSlides = useCallback(() => {
+    // Drops the current editor session. One-off uploads are deleted from
+    // Storage; photos that belong to a saved project are only dropped from the
+    // editor because the project still references them. `keepPhotos` forces
+    // keeping them (e.g. when a video was opened via ?project=<id>).
+    const discardSlides = useCallback(async (keepPhotos = false) => {
+        const isProject = keepPhotos || !!localStorage.getItem('currentProjectID');
+        const current = slidesRef.current;
         setSlides([]);
+        if (isProject) return;
+
+        await Promise.all(current
+            .filter((slide) => slide.path)
+            .map(async (slide) => {
+                try {
+                    await deleteObject(ref(storage, slide.path));
+                } catch {
+                    // The file may already be gone; ignore.
+                }
+            }));
+    }, []);
+
+    const loadSamples = useCallback(() => {
+        setSlides(SAMPLE_SLIDES.map((slide) => ({ ...slide })));
+    }, []);
+
+    // Opens a saved project in the editor: its photos become fresh slides with
+    // default settings, so the same photos can produce different videos.
+    const loadProject = useCallback((project) => {
+        // Older projects may contain more photos than a single video supports.
+        const photos = (project.photos || []).slice(0, MAX_SLIDES).map((p) => ({
+            name: p.name,
+            path: p.path,
+            url: p.url,
+            duration: 1,
+            transition: 'fade',
+            caption: '',
+            captionPosition: 'bottom',
+            focusX: 0.5,
+            focusY: 0.5,
+        }));
+        setSlides(photos);
+        if (project.settings) {
+            setSettings((prev) => ({ ...prev, ...project.settings }));
+        }
+        if (project.id) {
+            localStorage.setItem('currentProjectID', project.id);
+        }
     }, []);
 
     const updateSettings = useCallback((patch) => {
         setSettings((prev) => ({ ...prev, ...patch }));
+    }, []);
+
+    // Reset every editor setting (per-slide and global) but keep the photos.
+    const resetProject = useCallback(() => {
+        setSlides((prev) => prev.map((slide) => ({
+            ...slide,
+            duration: 1,
+            transition: 'fade',
+            caption: '',
+            captionPosition: 'bottom',
+            focusX: 0.5,
+            focusY: 0.5,
+            captionFont: 'sans',
+            captionSize: 1,
+            captionColor: '#ffffff',
+            captionBg: '#000000',
+            captionBgOpacity: 0.35,
+            captionLogo: '',
+            captionLogoPosition: 'top',
+            captionLogoSize: 1,
+        })));
+        setSettings({ ...DEFAULT_SETTINGS });
+        localStorage.removeItem('soundtrack');
+        localStorage.removeItem('soundtrackName');
     }, []);
 
     const value = useMemo(() => ({
@@ -178,14 +305,18 @@ export const SlidesProvider = ({ children }) => {
         error,
         maxSlides: MAX_SLIDES,
         upload,
+        uploadMany,
         deleteSlide,
         deleteSlideLocal,
         updateSlide,
         applyToAll,
         reorder,
-        clearSlides,
-        updateSettings
-    }), [slides, settings, isUploading, error, upload, deleteSlide, deleteSlideLocal, updateSlide, applyToAll, reorder, clearSlides, updateSettings]);
+        discardSlides,
+        loadSamples,
+        loadProject,
+        updateSettings,
+        resetProject
+    }), [slides, settings, isUploading, error, upload, uploadMany, deleteSlide, deleteSlideLocal, updateSlide, applyToAll, reorder, discardSlides, loadSamples, loadProject, updateSettings, resetProject]);
 
     return <SlidesContext.Provider value={value}>{children}</SlidesContext.Provider>;
 };

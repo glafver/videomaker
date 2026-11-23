@@ -9,6 +9,14 @@ require('dotenv').config();
 
 const { initializeApp } = require('firebase/app');
 const { getStorage, ref, uploadBytes, getDownloadURL } = require('firebase/storage');
+const {
+    FPS,
+    resolutionFor,
+    TRANSITIONS,
+    ffColor,
+    isAllowedImageUrl,
+    parseVideoRequest
+} = require('./lib/video');
 
 const firebaseConfig = {
     apiKey: process.env.FIREBASE_API_KEY,
@@ -25,8 +33,9 @@ const storage = getStorage(firebaseApp);
 const port = process.env.PORT || 3001;
 
 const app = express();
+app.disable('x-powered-by');
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(cors({
     origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
     optionsSuccessStatus: 200
@@ -36,21 +45,26 @@ app.use(cors({
 // TODO (cloud persistence): mirror this to Firestore so status survives instance restarts.
 const jobs = {};
 
-// Letterbox fill color used when an image's aspect ratio differs from the target.
-const LETTERBOX_COLOR = '#374048';
-
-// Output frame rate of the generated videos.
-const FPS = 25;
-
-// Supported output resolutions per aspect ratio.
-const RESOLUTIONS = {
-    '16:9': { width: 1024, height: 576 },
-    '1:1': { width: 1024, height: 1024 },
-    '9:16': { width: 576, height: 1024 }
+// Completed jobs are only needed while a client polls for the result.
+const JOB_TTL_MS = 30 * 60 * 1000;
+const scheduleJobCleanup = (id) => {
+    const timer = setTimeout(() => {
+        delete jobs[id];
+    }, JOB_TTL_MS);
+    if (typeof timer.unref === 'function') timer.unref();
 };
 
+// Cache of rendered transition-preview clips (key -> video URL) to avoid re-rendering.
+const transitionCache = new Map();
+const TRANSITION_CACHE_MAX = 100;
+
 // Font used for captions (drawtext). Bundled so it works inside the Docker image.
-const CAPTION_FONT = path.join(__dirname, 'assets', 'caption-font.ttf');
+const CAPTION_FONTS = {
+    sans: path.join(__dirname, 'assets', 'caption-fonts', 'Lato-Regular.ttf'),
+    display: path.join(__dirname, 'assets', 'caption-fonts', 'BebasNeue-Regular.ttf'),
+    serif: path.join(__dirname, 'assets', 'caption-fonts', 'CrimsonText-Regular.ttf'),
+    mono: path.join(__dirname, 'assets', 'caption-fonts', 'SpaceMono-Regular.ttf'),
+};
 
 // Convert an absolute path to one relative to __dirname (with forward slashes)
 // so it can be used inside an ffmpeg filter graph. Relative paths avoid the
@@ -69,21 +83,9 @@ const IMAGEMAGICK_BIN = (() => {
     }
 })();
 
-// Only image URLs from Firebase Storage are allowed (SSRF protection).
-const ALLOWED_IMAGE_HOSTS = ['firebasestorage.googleapis.com', 'storage.googleapis.com'];
-
 // Generates a random hex sequence of the exact specified length.
 const randomValue = (length) => {
     return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
-};
-
-const isAllowedImageUrl = (url) => {
-    try {
-        const host = new URL(url).hostname;
-        return ALLOWED_IMAGE_HOSTS.some((allowed) => host === allowed || host.endsWith('.' + allowed));
-    } catch (e) {
-        return false;
-    }
 };
 
 // Download images with specified urls into a folder named with id.
@@ -91,15 +93,12 @@ const isAllowedImageUrl = (url) => {
 const downloadImages = async (id, urls) => {
     const dir = path.join(__dirname, id);
     if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir);
+        fs.mkdirSync(dir, { recursive: true });
     }
 
-    const paths = [];
-    for (let i = 0; i < urls.length; i++) {
-        const filepath = path.join(dir, `${i + 1}.jpg`);
-        await downloadImage(urls[i], filepath);
-        paths.push(filepath);
-    }
+    // Download in parallel; the array order still matches the slide order.
+    const paths = urls.map((_, i) => path.join(dir, `${i + 1}.jpg`));
+    await Promise.all(urls.map((url, i) => downloadImage(url, paths[i])));
 
     return paths;
 };
@@ -124,16 +123,39 @@ const downloadImage = async (url, filepath) => {
 
 // Scales and aligns images to the target resolution using ImageMagick.
 // If a picture's aspect ratio differs, it is centered and padded with the fill color.
-const alignPictures = (id, paths, { width, height }) => {
+const alignPictures = (id, paths, { width, height }, focuses) => {
     for (let i = 0; i < paths.length; i++) {
         const output = path.join(__dirname, id, `ready-${i}.jpg`);
+        const focus = (focuses && focuses[i]) || {};
+        const fx = Math.min(1, Math.max(0, Number(focus.x) || 0.5));
+        const fy = Math.min(1, Math.max(0, Number(focus.y) || 0.5));
+
+        // Compute the cover-crop offset so the chosen focus point stays visible.
+        let offsetX = 0;
+        let offsetY = 0;
+        try {
+            const isV7 = (IMAGEMAGICK_BIN || '').toLowerCase().includes('magick');
+            const dimsOut = isV7
+                ? execFileSync(IMAGEMAGICK_BIN, ['identify', '-format', '%w %h', paths[i]]).toString()
+                : execFileSync('identify', ['-format', '%w %h', paths[i]]).toString();
+            const [ow, oh] = dimsOut.trim().split(/\s+/).map(Number);
+            if (ow && oh) {
+                const scale = Math.max(width / ow, height / oh);
+                offsetX = Math.round((ow * scale - width) * fx);
+                offsetY = Math.round((oh * scale - height) * fy);
+            }
+        } catch (e) {
+            // Fall back to center crop if dimensions can't be read.
+            offsetX = 0;
+            offsetY = 0;
+        }
+
         execFileSync(IMAGEMAGICK_BIN, [
             paths[i],
             '-auto-orient',
-            '-resize', `${width}x${height}`,
-            '-gravity', 'center',
-            '-background', LETTERBOX_COLOR,
-            '-extent', `${width}x${height}`,
+            '-resize', `${width}x${height}^`,
+            '-crop', `${width}x${height}+${offsetX}+${offsetY}`,
+            '+repage',
             output
         ]);
         paths[i] = output;
@@ -166,7 +188,7 @@ const uploadVideo = async (id, userID) => {
 };
 
 // Builds the ffmpeg command and executes it to make a video specified by instructions.
-const createVideo = (id, instructions, paths) => {
+const createVideo = (id, instructions, paths, logoPaths = []) => {
     jobs[id] = { status: 'IN_PROGRESS', progress: 0 };
 
     const amountOfSlides = instructions.slideshow.length;
@@ -175,7 +197,7 @@ const createVideo = (id, instructions, paths) => {
     const totalDuration = instructions.slideshow.reduce((sum, slide) => sum + slide.duration, 0) + (amountOfSlides - 1);
     const totalMicros = totalDuration * 1e6;
 
-    const resolution = RESOLUTIONS[instructions.aspectRatio] || RESOLUTIONS['16:9'];
+    const resolution = resolutionFor(instructions.aspectRatio);
     const { width, height } = resolution;
     const kenBurns = !!instructions.kenBurns;
 
@@ -214,12 +236,23 @@ const createVideo = (id, instructions, paths) => {
             commandArgs.push('-i', instructions.soundtrack);
         }
 
+        // Optional caption-logo inputs. Added after slides + soundtrack so their
+        // input indices are stable.
+        let nextLogoInputIndex = amountOfSlides + (instructions.soundtrack ? 1 : 0);
+        const logoInputIndex = [];
+        for (let i = 0; i < amountOfSlides; i++) {
+            if (logoPaths[i]) {
+                commandArgs.push('-loop', '1', '-t', paddedDurations[i], '-i', logoPaths[i]);
+                logoInputIndex[i] = nextLogoInputIndex++;
+            }
+        }
+
         const filters = [];
         const slideStreams = [];
-        const captionFontSize = Math.round(height * 0.06);
 
         for (let i = 0; i < amountOfSlides; i++) {
-            const caption = instructions.slideshow[i].caption || '';
+            const slideCfg = instructions.slideshow[i];
+            const caption = slideCfg.caption || '';
             let current = `[${i}:v]`;
             let hasFilter = false;
 
@@ -232,14 +265,63 @@ const createVideo = (id, instructions, paths) => {
                 hasFilter = true;
             }
 
-            if (caption) {
-                const captionFile = path.join(__dirname, id, `caption-${i}.txt`);
-                fs.writeFileSync(captionFile, caption, 'utf8');
-                filters.push(
-                    `${current}drawtext=fontfile=${relativeFilterPath(CAPTION_FONT)}:textfile=${relativeFilterPath(captionFile)}:fontcolor=white:fontsize=${captionFontSize}:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.35:boxborderw=16[c${i}]`
-                );
-                current = `[c${i}]`;
-                hasFilter = true;
+            const hasLogo = logoInputIndex[i] !== undefined;
+            const hasText = !!caption;
+
+            if (hasLogo || hasText) {
+                const captionMargin = Math.round(height * 0.05);
+                const fontSize = Math.round(height * 0.06 * slideCfg.captionSize);
+                const boxBorder = slideCfg.captionBg === 'none' ? 0 : 16;
+                const textApproxH = Math.round(fontSize * 1.2);
+                const textVisualH = textApproxH + boxBorder * 2;
+                const logoH = Math.max(2, 2 * Math.round(height * 0.06 * slideCfg.captionLogoSize));
+                const gap = Math.round(height * 0.02);
+                const textPos = slideCfg.captionPosition;              // top | middle | bottom
+                const logoAbove = slideCfg.captionLogoPosition !== 'bottom'; // top = above the text
+
+                // The logo + text form one group anchored to the text position;
+                // the logo sits either above or below the text inside it.
+                const groupH = hasText
+                    ? textVisualH + (hasLogo ? gap + logoH : 0)
+                    : logoH;
+
+                let groupTop;
+                if (textPos === 'top') groupTop = captionMargin;
+                else if (textPos === 'bottom') groupTop = Math.max(captionMargin, height - captionMargin - groupH);
+                else groupTop = Math.round((height - groupH) / 2);
+
+                let logoTop = null;
+                let captionY = null;
+
+                if (hasText) {
+                    const textVisualTop = (hasLogo && logoAbove) ? groupTop + logoH + gap : groupTop;
+                    captionY = textVisualTop + boxBorder;
+                }
+                if (hasLogo) {
+                    logoTop = (hasText && !logoAbove) ? groupTop + textVisualH + gap : groupTop;
+                }
+
+                if (hasLogo) {
+                    filters.push(`[${logoInputIndex[i]}:v]scale=-2:${logoH}[logo${i}]`);
+                    filters.push(`${current}[logo${i}]overlay=x=(W-w)/2:y=${logoTop}:shortest=1[l${i}]`);
+                    current = `[l${i}]`;
+                    hasFilter = true;
+                }
+
+                if (hasText) {
+                    const captionFile = path.join(__dirname, id, `caption-${i}.txt`);
+                    fs.writeFileSync(captionFile, caption, 'utf8');
+                    const fontFile = CAPTION_FONTS[slideCfg.captionFont];
+                    const fontColor = ffColor(slideCfg.captionColor, '0xFFFFFF');
+                    const box = slideCfg.captionBg === 'none'
+                        ? 'box=0'
+                        : `box=1:boxcolor=${ffColor(slideCfg.captionBg, '0x000000')}@${slideCfg.captionBgOpacity.toFixed(2)}:boxborderw=${boxBorder}`;
+                    filters.push(
+                        `${current}drawtext=fontfile=${relativeFilterPath(fontFile)}:textfile=${relativeFilterPath(captionFile)}:fontcolor=${fontColor}:fontsize=${fontSize}:x=(w-text_w)/2:y=${captionY}:${box}[c${i}]`
+                    );
+                    current = `[c${i}]`;
+                    hasFilter = true;
+                }
             }
 
             slideStreams[i] = hasFilter ? current : `[${i}:v]`;
@@ -274,9 +356,13 @@ const createVideo = (id, instructions, paths) => {
         commandArgs.push('-progress', 'pipe:1', '-nostats');
         commandArgs.push(path.join(__dirname, `${id}.mp4`));
 
-        console.log('ffmpeg', commandArgs.join(' '));
+        console.log('Rendering video', id);
 
         const ffmpeg = spawn('ffmpeg', commandArgs, { cwd: __dirname });
+
+        // Drain stderr so a full pipe buffer can never block ffmpeg; the
+        // messages themselves are not needed (stdout carries progress).
+        ffmpeg.stderr.resume();
 
         ffmpeg.stdout.on('data', (data) => {
             const text = data.toString();
@@ -296,12 +382,7 @@ const createVideo = (id, instructions, paths) => {
             }
         });
 
-        ffmpeg.stderr.on('data', (data) => {
-            // ffmpeg logs to stderr; keep it quiet but available for debugging.
-        });
-
         ffmpeg.on('close', async (code) => {
-            console.log(`child process exited with code ${code}`);
             try {
                 if (code === 0) {
                     await uploadVideo(id, instructions.userID);
@@ -316,56 +397,56 @@ const createVideo = (id, instructions, paths) => {
             } finally {
                 removeFile(path.join(__dirname, `${id}.mp4`));
                 removeDir(id);
+                scheduleJobCleanup(id);
             }
         });
     } catch (e) {
         console.error('ERROR!!!', e);
         jobs[id] = { status: 'FAILED' };
         removeDir(id);
+        scheduleJobCleanup(id);
     }
 };
 
 // The endpoint receives the settings from the frontend, responds with the order ID
 // and starts the video creation process.
 app.post('/video', async (req, res) => {
-    const { slideshow, soundtrack, userID, orderId } = req.body || {};
-
-    if (!Array.isArray(slideshow) || slideshow.length === 0 || slideshow.length > 6) {
-        return res.status(400).json({ error: 'slideshow must be a non-empty array with at most 6 slides' });
-    }
-    if (!userID) {
-        return res.status(400).json({ error: 'userID is required' });
-    }
-    for (const slide of slideshow) {
-        if (!slide || typeof slide.url !== 'string' || !slide.url) {
-            return res.status(400).json({ error: 'each slide must have a url' });
-        }
+    const parsed = parseVideoRequest(req.body || {});
+    if (parsed.error) {
+        return res.status(400).json({ error: parsed.error });
     }
 
-    const id = orderId || randomValue(32);
-
-    const normalizedSlideshow = slideshow.map((slide) => ({
-        url: slide.url,
-        duration: Math.min(5, Math.max(1, parseInt(slide.duration, 10) || 1)),
-        transition: slide.transition || 'fade',
-        caption: typeof slide.caption === 'string' ? slide.caption.trim().slice(0, 120) : ''
-    }));
-
-    const aspectRatio = ['16:9', '1:1', '9:16'].includes(req.body.aspectRatio) ? req.body.aspectRatio : '16:9';
-
-    const instructions = {
-        slideshow: normalizedSlideshow,
-        userID,
-        soundtrack: typeof soundtrack === 'string' ? soundtrack : '',
-        aspectRatio,
-        kenBurns: !!req.body.kenBurns
-    };
+    const { instructions } = parsed;
+    const id = parsed.orderId || randomValue(32);
+    const { slideshow: normalizedSlideshow, aspectRatio } = instructions;
 
     try {
         const urls = normalizedSlideshow.map((slide) => slide.url);
+        const resolution = resolutionFor(aspectRatio);
         const paths = await downloadImages(id, urls);
-        alignPictures(id, paths, RESOLUTIONS[aspectRatio]);
-        createVideo(id, instructions, paths);
+        alignPictures(id, paths, resolution, normalizedSlideshow.map((s) => ({ x: s.focusX, y: s.focusY })));
+
+        // Download caption logos (best-effort; a failed logo is simply skipped).
+        const logoPaths = [];
+        for (let i = 0; i < normalizedSlideshow.length; i++) {
+            const logo = normalizedSlideshow[i].captionLogo;
+            logoPaths[i] = null;
+            if (logo) {
+                const rawLogo = path.join(__dirname, id, `logo-${i}.src`);
+                const logoPath = path.join(__dirname, id, `logo-${i}.png`);
+                try {
+                    await downloadImage(logo, rawLogo);
+                    // Re-encode to a real PNG so ffmpeg can always decode it,
+                    // regardless of the uploaded file's actual format.
+                    execFileSync(IMAGEMAGICK_BIN, [rawLogo, '-background', 'none', '-resize', '1200x1200>', logoPath], { cwd: __dirname });
+                    logoPaths[i] = logoPath;
+                } catch (err) {
+                    console.error('Failed to prepare caption logo:', err);
+                }
+            }
+        }
+
+        createVideo(id, instructions, paths, logoPaths);
 
         res.status(201).json({ id });
     } catch (e) {
@@ -373,6 +454,11 @@ app.post('/video', async (req, res) => {
         removeDir(id);
         res.status(500).json({ error: 'Failed to create video' });
     }
+});
+
+// Lightweight liveness endpoint used by the frontend to wake a sleeping instance.
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
 });
 
 // The endpoint returns video status (requested periodically from the frontend).
@@ -391,6 +477,66 @@ app.get('/status/:id', (req, res) => {
     res.status(200).json(result);
 });
 
-app.listen(port, () => {
-    console.log(`Videomaker app listening on port ${port}`);
+// Renders a short two-slide xfade clip for a live transition preview.
+app.post('/transition-preview', async (req, res) => {
+    const { from, to, transition, aspectRatio } = req.body || {};
+    if (typeof from !== 'string' || typeof to !== 'string') {
+        return res.status(400).json({ error: 'from and to image URLs are required' });
+    }
+    if (!isAllowedImageUrl(from) || !isAllowedImageUrl(to)) {
+        return res.status(400).json({ error: 'image URLs are not allowed' });
+    }
+
+    const t = TRANSITIONS.includes(transition) ? transition : 'fade';
+    const ratio = /^\d+:\d+$/.test(aspectRatio || '') ? aspectRatio : '3:2';
+
+    const cacheKey = `${from}|${to}|${t}|${ratio}`;
+    if (transitionCache.has(cacheKey)) {
+        return res.json({ url: transitionCache.get(cacheKey) });
+    }
+
+    const id = randomValue(16);
+
+    try {
+        const paths = await downloadImages(id, [from, to]);
+        alignPictures(id, paths, resolutionFor(ratio), [{ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }]);
+
+        const output = path.join(__dirname, `${id}.mp4`);
+        const filterComplex = `[0:v][1:v]xfade=transition=${t}:duration=1:offset=1[v]`;
+        execFileSync('ffmpeg', [
+            '-y',
+            '-loop', '1', '-t', '2', '-i', paths[0],
+            '-loop', '1', '-t', '2', '-i', paths[1],
+            '-filter_complex', filterComplex,
+            '-map', '[v]',
+            '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '25',
+            output
+        ], { cwd: __dirname });
+
+        const storageRef = ref(storage, `/previews/${id}.mp4`);
+        await uploadBytes(storageRef, fs.readFileSync(output));
+        const url = await getDownloadURL(storageRef);
+
+        removeDir(id);
+        removeFile(output);
+
+        transitionCache.set(cacheKey, url);
+        if (transitionCache.size > TRANSITION_CACHE_MAX) {
+            transitionCache.delete(transitionCache.keys().next().value);
+        }
+        res.json({ url });
+    } catch (e) {
+        console.error('Error rendering transition preview:', e);
+        removeDir(id);
+        removeFile(path.join(__dirname, `${id}.mp4`));
+        res.status(500).json({ error: 'Failed to render transition preview' });
+    }
 });
+
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`Videomaker app listening on port ${port}`);
+    });
+}
+
+module.exports = app;

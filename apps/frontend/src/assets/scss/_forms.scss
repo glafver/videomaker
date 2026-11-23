@@ -1,0 +1,211 @@
+// ------------------------------------------------------------------
+// Form controls — brand styling (overrides Bootstrap's blue defaults)
+// ------------------------------------------------------------------
+.form-control,
+.form-select {
+    border-radius: 0;
+    border-color: $gray_dark_videomaker;
+    color: $vm-text;
+
+    &:focus {
+        border-color: $vm-primary;
+        box-shadow: 0 0 0 0.2rem rgba($vm-primary, 0.2);
+    }
+}
+
+// Remove the native select look (blue highlight on Windows) and add our own arrow.
+.form-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343f46' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    padding-right: 2.5rem;
+}
+
+.form-check-input {
+    border-color: $gray_dark_videomaker;
+
+    &:checked {
+        background-color: $vm-primary;
+        border-color: $vm-primary;
+    }
+
+    &:focus {
+        border-color: $vm-primary;
+        box-shadow: 0 0 0 0.2rem rgba($vm-primary, 0.2);
+    }
+}
+
+// Toggle switch — sage when on (keeps the pill shape from Bootstrap).
+.form-switch .form-check-input:checked {
+    background-color: $vm-primary;
+    border-color: $vm-primary;
+}
+
+// ------------------------------------------------------------------
+// Custom select (replaces native <select> to remove the blue dropdown)
+// ------------------------------------------------------------------
+.vm-select {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+
+    .vm-select-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        background-color: #fff;
+        border: 1px solid $gray_dark_videomaker;
+        border-radius: 0;
+        color: $vm-text;
+        text-align: left;
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1.5;
+
+        &:disabled {
+            background-color: $vm-secondary;
+            cursor: not-allowed;
+        }
+    }
+
+    .vm-select-arrow {
+        color: $vm-text;
+        flex-shrink: 0;
+    }
+}
+
+.vm-select-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    margin: 2px 0 0;
+    padding: 4px 0;
+    list-style: none;
+    background-color: #fff;
+    border: 1px solid $gray_dark_videomaker;
+    border-radius: 0;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.vm-select-option {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    background: none;
+    border: none;
+    color: $vm-text;
+    text-align: left;
+    cursor: pointer;
+    font-size: 1rem;
+
+    &:hover {
+        background-color: $vm-secondary;
+    }
+
+    &:disabled {
+        color: $gray_dark_videomaker;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+}
+
+.vm-select-option-selected,
+.vm-select-option-selected:hover {
+    background-color: $vm-primary;
+    color: #fff;
+}
+
+.vm-color {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.vm-color-trigger {
+    position: relative;
+    width: 40px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid $gray_dark_videomaker;
+    background-color: #fff;
+    cursor: pointer;
+    overflow: hidden;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.vm-color-checker {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(45deg, #ccc 25%, transparent 25%),
+        linear-gradient(-45deg, #ccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ccc 75%),
+        linear-gradient(-45deg, transparent 75%, #ccc 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+
+.vm-color-fill {
+    position: absolute;
+    inset: 0;
+}
+
+.vm-color-popover {
+    z-index: 2000;
+    padding: 10px;
+    background-color: #fff;
+    border: 1px solid $gray_dark_videomaker;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.vm-color-input {
+    width: 100%;
+    height: 34px;
+    padding: 2px;
+    border: 1px solid $gray_dark_videomaker;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.vm-color-opacity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vm-color-opacity-label {
+    font-size: 0.78rem;
+    color: $gray_dark_videomaker;
+    white-space: nowrap;
+}
+
+.vm-color-opacity-value {
+    min-width: 34px;
+    font-size: 0.78rem;
+    color: $vm-text;
+    text-align: right;
+}
+
+.vm-color-range {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+}
