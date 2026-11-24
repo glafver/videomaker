@@ -1,0 +1,11 @@
+.git
+**/node_modules
+**/.env
+**/.env.*
+apps/frontend/dist
+apps/backend/public
+apps/backend/test
+apps/backend/vitest.config.js
+functions
+*.mp4
+*.log

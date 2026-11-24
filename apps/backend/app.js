@@ -533,6 +533,28 @@ app.post('/transition-preview', async (req, res) => {
     }
 });
 
+// In the single-container deployment the built frontend lives in ./public and is
+// served by this same Express app. Registered after all API routes so the SPA
+// fallback never shadows /video, /status, /health or /transition-preview.
+const publicDir = path.join(__dirname, 'public');
+const indexFile = path.join(publicDir, 'index.html');
+if (fs.existsSync(indexFile)) {
+    app.use(express.static(publicDir, {
+        index: false,
+        setHeaders: (res, filePath) => {
+            if (filePath.endsWith('index.html')) {
+                res.setHeader('Cache-Control', 'no-cache');
+            } else if (/\.(js|css|woff2?|png|jpe?g|gif|svg|webp|ico)$/.test(filePath)) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            }
+        }
+    }));
+
+    app.get('*', (req, res) => {
+        res.sendFile(indexFile);
+    });
+}
+
 if (require.main === module) {
     app.listen(port, () => {
         console.log(`Videomaker app listening on port ${port}`);

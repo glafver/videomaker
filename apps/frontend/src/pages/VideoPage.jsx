@@ -23,7 +23,8 @@ const VideoPage = () => {
     const { user } = useAuth();
     const { discardSlides } = useSlides();
 
-    const shareURL = `${import.meta.env.VITE_DEPLOY_URL}/share/${getUserId()}/${orderID || ''}`;
+    const deployBase = import.meta.env.VITE_DEPLOY_URL || window.location.origin;
+    const shareURL = `${deployBase}/share/${getUserId()}/${orderID || ''}`;
     const quote = 'Have a look at my video!';
 
     const clearAll = async () => {
